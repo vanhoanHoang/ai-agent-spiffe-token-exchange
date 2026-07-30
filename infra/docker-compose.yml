@@ -39,7 +39,8 @@ services:
     networks: [lab]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.6.0
+    # M7: built image = pinned 26.6.0 base + workstream B's act-spiffe mapper jar
+    build: ../keycloak-spiffe-spi
     command:
       - start-dev
       - --features=spiffe                   # D-001: Profile.Feature.SPIFFE (preview); CLIENT_AUTH_FEDERATED is default-on

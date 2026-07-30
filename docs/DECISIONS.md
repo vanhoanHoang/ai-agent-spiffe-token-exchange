@@ -181,3 +181,21 @@ Decision / findings, all proven by `scripts/check-m6.sh` (green):
 Evidence: check output in session transcript; Keycloak truststore option from 26.6.0 `keycloak-truststore.adoc`; federation config from `specs/spire/spire_server.md`.
 
 Consequences: M7 rides the same client auth; workstream B builds only the `act` protocol mapper (per the human's revised BUILD-PLAN M7). Two upstream-reportable items so far: none for Keycloak aud (matches normative), one for SPIRE doc default.
+
+---
+
+## D-008 — M7 landed: standard token exchange + act-spiffe mapper (workstream B's actual job)
+
+Date: 2026-07-31 · Milestone: M7 · Author: claude-code (standing delegation; design per the human's revised BUILD-PLAN M7)
+
+Decision / findings, proven by `scripts/check-m7.sh` (green):
+1. **Exit criterion holds**: exchanged token carries `sub` = alice, `act.sub` = `spiffe://lab.internal/agent-client`, `aud` = `https://mcp.lab.internal:8443`; the MCP server accepts it over SVID mTLS and logs `sub` + `act` on every call.
+2. **No `audience` parameter needed, no resource client needed**: 26.6.0's `audience` parameter only FILTERS audiences (securing-apps/token-exchange.adoc: "will not add more audiences"); the exchanged token inherits `aud` from the requester's client scopes — agent-client's `mcp-audience` scope supplies the canonical resource id.
+3. **Subject-token rule**: `StandardTokenExchangeProvider` rejects exchange when the requester is not in the subject token's `aud` ("reject if the requester-client is not in the audience of the subject token"). Hence the `agent-audience` client scope on `test-caller`: tokens alice hands to the agent carry `aud=agent-client`. This is a real security property — a token minted for some other consumer cannot be laundered through the agent (negative test green).
+4. **Exchange enablement** is per-client: attribute `standard.token.exchange.enabled=true` (`OIDCConfigAttributes:95`); requester must be confidential (public clients rejected in source).
+5. **`act` mapper (workstream B, `keycloak-spiffe-spi/`)**: `act-spiffe-mapper` stamps `act.sub` from the *authenticated requester client's* `jwt.credential.sub` attribute (the identity its JWT-SVID proved at client auth) — faithful RFC 8693 §4.1 semantics without an `actor_token` parameter, which Keycloak's standard exchange does not support. No `act` on service-account-subject tokens (no human → no delegation). Reuses Keycloak's own `FederatedJWTClientAuthenticator.JWT_CREDENTIAL_SUBJECT_KEY` constant — no string duplication; the assertion-type URN still exists exactly once (agent-client).
+6. **Keycloak compose service is now a built image**: pinned `quay.io/keycloak/keycloak:26.6.0` base + the SPI jar (multi-stage in `keycloak-spiffe-spi/Dockerfile`). The base pin remains governed by VERSIONS.md; pom's `keycloak.version` must match it.
+
+Evidence: 26.6.0 token-exchange.adoc; StandardTokenExchangeProvider.java:160-180; OIDCConfigAttributes.java:95; check-m7.sh output in transcript.
+
+Consequences: M8 (cert-bound tokens) is optional garnish per the M7 scope discussion; M9 acceptance can now assert the full happy path plus all four rejections. Draft-isolation intact: a draft rev bump still touches only SpiffeClientAuth.java + Keycloak's own validator (upstream).

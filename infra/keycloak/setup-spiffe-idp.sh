@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.."
 
 K() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
 say() { echo "== $*"; }
+client_id() { K get clients -r lab -q clientId="$1" --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/'; }
 
 K config credentials --server http://localhost:8080 --realm master --user admin --password admin
 
@@ -42,4 +43,32 @@ SCOPE_ID=$(K get client-scopes -r lab --fields id,name 2>/dev/null | tr -d ' \n'
 # check-m6.sh proves that empirically (auth with the generated value must fail).
 K get "clients/$CID" -r lab --fields clientAuthenticatorType 2>/dev/null | grep -q "federated-jwt" \
   || { echo "FATAL: agent-client authenticator is not federated-jwt"; exit 1; }
-say "spiffe idp + agent-client ready (authenticator=federated-jwt)"
+
+# ---- M7: standard token exchange + act mapper ----------------------------
+# Enablement attribute verified in 26.6.0 source (OIDCConfigAttributes:95).
+K update "clients/$CID" -r lab -s 'attributes."standard.token.exchange.enabled"=true'
+say "standard token exchange enabled on agent-client"
+
+if K get "clients/$CID/protocol-mappers/models" -r lab 2>/dev/null | grep -q "act-spiffe"; then
+  say "act-spiffe mapper attached"
+else
+  say "attaching act-spiffe protocol mapper (workstream B jar)"
+  K create "clients/$CID/protocol-mappers/models" -r lab \
+    -s name=act-spiffe -s protocol=openid-connect -s protocolMapper=act-spiffe-mapper -s 'config={}'
+fi
+
+# Subject-token rule (StandardTokenExchangeProvider: "reject if the
+# requester-client is not in the audience of the subject token"): tokens that
+# alice hands to the agent must carry aud=agent-client.
+AG_SCOPE_ID=$(K get client-scopes -r lab --fields id,name 2>/dev/null | tr -d ' \n' | grep -o '{"id":"[^"]*","name":"agent-audience"}' | sed 's/.*"id":"\([^"]*\)".*/\1/' || true)
+if [ -z "$AG_SCOPE_ID" ]; then
+  say "creating client-scope agent-audience (aud=agent-client on user tokens)"
+  AG_SCOPE_ID=$(K create client-scopes -r lab -s name=agent-audience -s protocol=openid-connect -i)
+  K create "client-scopes/$AG_SCOPE_ID/protocol-mappers/models" -r lab \
+    -s name=agent-aud -s protocol=openid-connect -s protocolMapper=oidc-audience-mapper \
+    -s 'config."included.client.audience"=agent-client' \
+    -s 'config."access.token.claim"=true'
+fi
+TC_ID=$(client_id test-caller)
+K update "clients/$TC_ID/default-client-scopes/$AG_SCOPE_ID" -r lab
+say "spiffe idp + agent-client ready (federated-jwt, token exchange, act mapper)"

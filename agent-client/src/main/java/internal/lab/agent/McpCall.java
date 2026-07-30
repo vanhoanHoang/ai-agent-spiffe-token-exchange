@@ -31,10 +31,12 @@ public final class McpCall {
     public static void main(String[] args) throws Exception {
         if (args.length >= 1 && "token".equals(args[0])) {
             // M6 mode: token <token-endpoint> — env: ISSUER (aud, sole value).
+            // M7 mode: same + env SUBJECT_TOKEN -> RFC 8693 token exchange.
             // client_id is the workload's own SPIFFE ID, taken from its JWT-SVID.
             TokenRequest.run(
                     args[1],
-                    System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/lab"));
+                    System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/lab"),
+                    System.getenv().get("SUBJECT_TOKEN"));
             return;
         }
         if (args.length != 1) {

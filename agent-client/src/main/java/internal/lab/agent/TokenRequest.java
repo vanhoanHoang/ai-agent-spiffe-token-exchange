@@ -23,15 +23,24 @@ final class TokenRequest {
     private TokenRequest() {
     }
 
-    static void run(String tokenEndpoint, String issuerIdentifier) throws Exception {
+    static void run(String tokenEndpoint, String issuerIdentifier, String subjectToken) throws Exception {
         try (JwtSource source = DefaultJwtSource.newSource()) {
             // subject-less fetch: the Workload API mints for the CALLER's attested
             // identity — the negative test relies on exactly that.
             JwtSvid svid = source.fetchJwtSvid(issuerIdentifier);
 
+            // M7 (RFC 8693, Keycloak standard token exchange): subject_token = the
+            // human's token; the actor is this authenticated client — no actor_token
+            // parameter exists, the act claim is stamped by workstream B's mapper.
+            String grant = (subjectToken == null)
+                    ? "grant_type=client_credentials"
+                    : "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:token-exchange", StandardCharsets.UTF_8)
+                            + "&subject_token=" + URLEncoder.encode(subjectToken, StandardCharsets.UTF_8)
+                            + "&subject_token_type=" + URLEncoder.encode("urn:ietf:params:oauth:token-type:access_token", StandardCharsets.UTF_8);
+
             // Keycloak requires client_id == the assertion's sub (the SPIFFE ID);
             // it looks the client up by its jwt.credential.sub attribute (D-001 #5).
-            String form = "grant_type=client_credentials"
+            String form = grant
                     + "&client_id=" + URLEncoder.encode(svid.getSpiffeId().toString(), StandardCharsets.UTF_8)
                     + "&client_assertion_type=" + URLEncoder.encode(SpiffeClientAuth.ASSERTION_TYPE, StandardCharsets.UTF_8)
                     + "&client_assertion=" + URLEncoder.encode(svid.getToken(), StandardCharsets.UTF_8);
