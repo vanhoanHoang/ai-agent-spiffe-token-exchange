@@ -1,0 +1,70 @@
+# Pinned per docs/VERSIONS.md. Do not bump tags here — change VERSIONS.md first.
+name: spiffe-mcp-lab
+
+services:
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.15.2
+    command: ["-config", "/opt/spire/conf/server/server.conf"]
+    volumes:
+      - ./spire/server.conf:/opt/spire/conf/server/server.conf:ro
+      - ./pki:/opt/spire/pki:ro            # M3: EJBCA-issued intermediate lands here
+      - spire-server-data:/opt/spire/data
+    healthcheck:
+      test: ["CMD", "/opt/spire/bin/spire-server", "healthcheck"]
+      interval: 5s
+      retries: 10
+    networks: [lab]
+
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:1.15.2
+    depends_on:
+      spire-server: { condition: service_healthy }
+    command: ["-config", "/opt/spire/conf/agent/agent.conf"]
+    volumes:
+      - ./spire/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+      - spire-agent-socket:/tmp/spire-agent/public
+    pid: "host"                             # VERIFY: needed for docker workload attestation on your engine
+    networks: [lab]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.0
+    command:
+      - start-dev
+      - --features=preview                  # VERIFY (M0): replace with the narrow flag for SPIFFE client auth
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin    # lab only; never reuse
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo ok"]  # VERIFY: 26.6 health endpoint/port
+      interval: 10s
+      retries: 15
+    networks: [lab]
+
+  mcp-server:
+    build: ../mcp-server
+    depends_on:
+      keycloak: { condition: service_healthy }
+    volumes:
+      - spire-agent-socket:/tmp/spire-agent/public:ro
+    ports: ["8443:8443"]
+    networks:
+      lab:
+        aliases: [mcp.lab.internal]         # own hostname — MCP clients resolve well-known against root domain
+
+  # ---- profile: pki (M3+) -------------------------------------------------
+  ejbca:
+    profiles: [pki]
+    image: keyfactor/ejbca-ce:REPLACE_ME    # VERIFY: pin in VERSIONS.md before enabling profile
+    ports: ["8081:8080", "8444:8443"]
+    volumes:
+      - ejbca-data:/mnt/persistent
+    networks: [lab]
+
+volumes:
+  spire-server-data:
+  spire-agent-socket:
+  ejbca-data:
+
+networks:
+  lab:

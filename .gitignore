@@ -1,0 +1,26 @@
+# Never commit key material (infra/pki file contract)
+infra/pki/*-key.pem
+*.key
+*.p12
+*.jks
+
+# Secrets / env
+.env
+.env.*
+
+# Build output
+target/
+build/
+out/
+*.class
+
+# Logs & runtime state
+logs/
+*.log
+
+# IDE / OS noise
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
