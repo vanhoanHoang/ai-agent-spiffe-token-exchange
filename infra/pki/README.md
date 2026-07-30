@@ -2,6 +2,11 @@
 
 Human runs EJBCA issuance and places files EXACTLY here; everything else consumes these paths.
 
+Automation (D-004, human-delegated): `./setup-ejbca.sh` performs the whole issuance
+re-runnably — LabRoot + name-constrained SpireIntermediate in EJBCA CE, signing key
+generated locally and imported (EJBCA soft tokens are non-exportable), contract files
+exported here. Files are gitignored; regenerate anytime with `--force`.
+
 | File | What | Produced by |
 |---|---|---|
 | `ejbca-root.pem` | EJBCA root CA cert | human, once |

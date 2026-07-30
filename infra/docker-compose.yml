@@ -25,6 +25,7 @@ services:
     command: ["-config", "/opt/spire/conf/agent/agent.conf"]
     volumes:
       - ./spire/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+      - ./pki/ejbca-root.pem:/opt/spire/pki/ejbca-root.pem:ro   # M3 bootstrap trust anchor
       - ./spire/bootstrap/agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
       - ./spire/bootstrap/agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro   # docker workload attestor (M2)
@@ -70,8 +71,8 @@ services:
   # ---- profile: pki (M3+) -------------------------------------------------
   ejbca:
     profiles: [pki]
-    image: keyfactor/ejbca-ce:REPLACE_ME    # VERIFY: pin in VERSIONS.md before enabling profile
-    ports: ["8081:8080", "8444:8443"]
+    image: keyfactor/ejbca-ce:9.3.7         # pinned per docs/VERSIONS.md (D-004)
+    ports: ["8083:8080", "8444:8443"]       # host 8081 collides with nothing, but keep clear of spire-server's in-net 8081 for sanity
     volumes:
       - ejbca-data:/mnt/persistent
     networks: [lab]
