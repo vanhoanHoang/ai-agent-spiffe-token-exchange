@@ -58,8 +58,13 @@ services:
 
   mcp-server:                               # default profile since M4 (D-003 §3)
     build: ../mcp-server
+    labels:
+      org.lab.workload: mcp-server          # docker workload attestation selector (M2 registration entry)
     depends_on:
       keycloak: { condition: service_healthy }
+      spire-agent: { condition: service_healthy }
+    environment:
+      SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock   # read by the Spiffe factories (D-006)
     volumes:
       - spire-agent-socket:/tmp/spire-agent/public:ro
     ports: ["8443:8443"]
@@ -67,10 +72,17 @@ services:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8443"]
       interval: 5s
       retries: 24
-      start_period: 20s
+      start_period: 40s                     # X509Source blocks until an SVID is issued
     networks:
       lab:
         aliases: [mcp.lab.internal]         # own hostname — MCP clients resolve well-known against root domain
+
+  # Built for ad-hoc runs by checks/acceptance (docker run ...-agent-client);
+  # never started as a long-running service.
+  agent-client:
+    profiles: [tools]
+    build: ../agent-client
+    networks: [lab]
 
   # ---- profile: pki (M3+) -------------------------------------------------
   ejbca:

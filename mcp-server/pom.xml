@@ -31,6 +31,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.spiffe</groupId>
+            <artifactId>java-spiffe-provider</artifactId>
+            <!-- Pinned in docs/VERSIONS.md (D-006). Do not bump here. -->
+            <version>0.8.17</version>
+        </dependency>
     </dependencies>
 
     <build>

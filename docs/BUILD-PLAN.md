@@ -104,11 +104,13 @@ Validation checks required by §3.1: well-formed JWT-SVID; `sub`/`aud`/`exp` pre
 
 ## M7 — Token exchange with `act`
 
-RFC 8693: `subject_token` = user token, `actor_token` = JWT-SVID, `resource` = MCP server URI.
+RFC 8693 **as Keycloak 26.x actually implements it** (verified against the 26.x securing-apps token-exchange docs, D-006): standard token exchange supports `subject_token`/`audience`/`scope` only — **no `actor_token`, no `resource` parameter, and no native `act` claim**. So the request is: `subject_token` = user token, client authentication = JWT-SVID (`…:jwt-spiffe`), `audience` = the MCP server's client.
+
+`act.sub` comes from a **custom protocol mapper** (workstream B wakes up for this, not for client auth): the actor is the *authenticated client*, whose identity is already the SPIFFE ID via `jwt.credential.sub`. Semantically faithful to RFC 8693 — the agent is the acting party, and its client authentication already proved who it is.
 
 **Exit:** decoded access token shows `sub` = human, `act.sub` = `spiffe://lab.internal/...`, `aud` = MCP server. The MCP server logs both on every call.
 
-*Expect a custom protocol mapper to get `act` populated correctly. Budget half a day.*
+*The mapper is mandatory, not a contingency. Budget half a day for it plus the audience wiring.*
 
 ---
 
@@ -127,6 +129,29 @@ The goal, as one script: `infra/acceptance.sh`. Happy path (login → jwt-spiffe
 **Exit:** `./infra/acceptance.sh` exits 0.
 
 M8 green without M9 green means the pieces work and the system doesn't. The project is done at M9, not M8.
+
+---
+
+# Demo track (post-M9, optional)
+
+Presentation layer only. Nothing here gates M0–M9, touches `acceptance.sh`, or enters any validation path. Feasibility, verified library facts, and pins-owed recorded in D-006.
+
+## M10 — AI agent in front of agent-client
+
+A thin agentic loop (Anthropic Java SDK, tool runner) inside `agent-client`'s Spring Boot chassis: the model decides *what* MCP tool to call; the existing SVID → exchange → mTLS path decides *as whom*. The model never touches an SVID, a token, or the exchange. MCP calls go through the official MCP Java client, with the java-spiffe `SSLContext` injected via the transport's `clientBuilder(...)` and the exchanged bearer via `httpRequestCustomizer(...)` — the three-trust-store rules survive the library (builder methods verified in D-006).
+
+VERIFY: anthropic-java and MCP Java SDK pins against VERSIONS.md rows before writing code (human-gated additions).
+
+**Exit:**
+1. A natural-language request produces an MCP call whose server log shows `sub` = human and `act.sub` = the agent's SPIFFE ID.
+2. Negative demo: the agent is asked to do something outside `user ∩ agent` scopes; the model attempts it and the MCP server rejects it — enforcement is tokens, not model behavior.
+3. No API key anywhere in the repo (environment only), and `./infra/acceptance.sh` still exits 0, untouched.
+
+## M11 — Demo console
+
+Read-only visualizer (mockup already exists): act rail, chain-of-custody panel, token cards, four rejection cards, live log tail. Fed by JSON captured from a demo run. Holds no secrets, stores no tokens, validates nothing.
+
+**Exit:** the console renders a complete demo run offline from captured JSON; killing it changes nothing about the stack.
 
 ---
 

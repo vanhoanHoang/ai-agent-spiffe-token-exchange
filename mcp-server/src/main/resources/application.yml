@@ -1,5 +1,8 @@
 server:
   port: 8443
+  ssl:
+    bundle: spiffe        # registered by SpiffeSslBundleConfig (D-006)
+    client-auth: need     # mTLS: no client SVID -> handshake rejected
 
 spring:
   security:
@@ -14,5 +17,7 @@ spring:
 
 mcp:
   # Canonical resource identifier = required token audience (D-005).
-  # Stable across M4..M9 even while M4 transport is plain HTTP.
   resource-id: https://mcp.lab.internal:8443
+  # Workload allowlist (M5, comma-separated): which SPIFFE IDs may call at all.
+  # Effective permissions stay user-scopes ∩ agent-allowed — this is the outer gate.
+  allowed-spiffe-ids: spiffe://lab.internal/agent-client
