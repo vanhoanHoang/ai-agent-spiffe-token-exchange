@@ -9,6 +9,9 @@ Rule: nothing in this repo references an image, dependency, or spec revision not
 | EJBCA CE | `9.3.7` | Newest CE tag on hub.docker.com/r/keyfactor/ejbca-ce (pushed 2025-12-17; next-older 9.1.1). Pinned by claude-code under explicit user delegation for M3 — see D-004. | Pinned 2026-07-31 |
 | java-spiffe | `0.8.17` | Latest release on github.com/spiffe/java-spiffe AND `<latest>` in repo1 maven-metadata (io.spiffe:java-spiffe-provider); pinned under standing delegation — see D-006. Docs at tag in `specs/java-spiffe/`. | Pinned 2026-07-31 |
 | Java / Spring Boot | 21 / `4.1.0` | Latest release per repo1.maven.org maven-metadata.xml (search.maven.org index was stale at 3.5.3 — human caught it); human chose "latest" — see D-005. | Pinned 2026-07-31 |
+| Spring AI | `2.0.0` | repo1 metadata; starters depend on Spring Boot 4.1.0 exactly (matches pin). See D-010. | Pinned 2026-07-31 |
+| MCP Java SDK | `2.0.0` (`io.modelcontextprotocol.sdk`) | repo1 + GitHub v2.0.0; transport hooks verified (D-010). | Pinned 2026-07-31 |
+| Ollama / demo model | `ollama/ollama:0.32.5` / `qwen3.5:4b` | hub tags; ollama.com tools catalog (D-010). Demo track only — no validation path. | Pinned 2026-07-31 |
 | spiffe-client-auth draft | `-02` | June 2026 revision | Pinned; watch datatracker for -03 |
 | MCP spec | `2025-11-25` + July 2026 update | — | **VERIFY: confirm which revision your target client speaks** |
 

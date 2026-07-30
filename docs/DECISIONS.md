@@ -213,3 +213,25 @@ Decision:
 4. **Provable, not theoretical**: a second workload `spiffe://lab.internal/test-agent` is registered and allowlisted as a permanent test fixture; the M9 acceptance asserts that test-agent replaying agent-client's exchanged token gets 403 via the binding check (a DIFFERENT code path than the allowlist 403, which the unlisted-workload rejection covers).
 
 Consequences: BUILD-PLAN M8 annotated as skipped-by-decision; M9 gains a fifth rejection. If the lab later wants real sender-constrained tokens, revisit RFC 8705 or DPoP against the SVID-rotation tension.
+
+---
+
+## D-010 — Demo-track pins and verified library facts (M10 P0)
+
+Date: 2026-07-31 · Milestone: M10 · Author: claude-code (standing delegation; BUILD-PLAN's "human-gated" flag on these rows noted — veto window open)
+
+Pins (all from repo1 maven-metadata / hub tags, per the D-005 lesson):
+| Component | Pin | Evidence |
+|---|---|---|
+| Spring AI | `2.0.0` | repo1 `<latest>`; starter poms depend on **Spring Boot 4.1.0 exactly** — matches our D-005 pin |
+| MCP Java SDK | `io.modelcontextprotocol.sdk` `2.0.0` | repo1 `<latest>`; GitHub tag `v2.0.0`. 2.0.0 split the artifacts: `mcp-core` + `mcp-json-jackson2/3` (+ `mcp` aggregator) |
+| Ollama image | `ollama/ollama:0.32.5` | hub.docker.com newest stable (non-rc) |
+| Demo model | `qwen3.5:4b` | ollama.com tools-capable catalog; small enough for CPU-only inference |
+
+Verified APIs (file:line from tag sources):
+1. **The two load-bearing hooks exist** — `HttpClientStreamableHttpTransport.Builder` (mcp-core, v2.0.0): `clientBuilder(HttpClient.Builder)` :744 (java-spiffe `SSLContext` injection) and `httpRequestCustomizer(McpSyncHttpClientRequestCustomizer)` :835 (exchanged-bearer injection). Also `asyncHttpRequestCustomizer` :851.
+2. `SyncMcpToolCallbackProvider(List<McpSyncClient>)` — spring-ai-mcp 2.0.0, `org.springframework.ai.mcp` :96.
+3. `ChatClient.builder(ChatModel)` + `Builder.defaultToolCallbacks(ToolCallbackProvider...)` — spring-ai-client-chat 2.0.0 :80/:585.
+4. Starters exist at 2.0.0: `spring-ai-starter-model-ollama`, `spring-ai-starter-mcp-client`, `spring-ai-starter-mcp-server-webmvc` (server side runs as normal servlet routes → our security filters apply).
+
+Consequences: BUILD-PLAN M10's stale references to D-007/D-008 corrected to this entry. P1 may begin. VERSIONS.md rows added in this commit.

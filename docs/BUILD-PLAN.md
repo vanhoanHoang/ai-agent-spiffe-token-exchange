@@ -134,17 +134,17 @@ M8 green without M9 green means the pieces work and the system doesn't. The proj
 
 # Demo track (post-M9, optional)
 
-Presentation layer only. Nothing here gates M0–M9, touches `acceptance.sh`, or enters any validation path. Feasibility, verified library facts, and pins-owed recorded in D-007 and D-008.
+Presentation layer only. Nothing here gates M0–M9, touches `acceptance.sh`, or enters any validation path. Feasibility, verified library facts, and pins-owed recorded in D-010.
 
 ## M10 — AI agent in front of agent-client
 
-A thin agentic loop inside `agent-client`'s Spring Boot chassis, written against **Spring AI's provider-neutral `ChatClient`/`ChatModel` abstraction** (D-008 — no vendor SDK): the model decides *what* MCP tool to call; the existing SVID → exchange → mTLS path decides *as whom*. The model never touches an SVID, a token, or the exchange.
+A thin agentic loop inside `agent-client`'s Spring Boot chassis, written against **Spring AI's provider-neutral `ChatClient`/`ChatModel` abstraction** (D-010 — no vendor SDK): the model decides *what* MCP tool to call; the existing SVID → exchange → mTLS path decides *as whom*. The model never touches an SVID, a token, or the exchange.
 
 **Provider is a deployment detail, not code.** Default demo provider: **Ollama, local — free, no API key exists at all.** Any OpenAI-compatible endpoint (Groq, OpenRouter, Gemini's compat layer, …) is a swap of starter dependency + `application.properties` only. Containment rule, mirroring §5 of CLAUDE.md: no `org.springframework.ai.<provider>.*` type appears outside the one Spring configuration class; the loop depends only on `ChatClient`/`ToolCallback`. A provider switch that touches more than the build file and properties means the isolation failed — fix that first.
 
-MCP calls still go through the official MCP Java client, with the java-spiffe `SSLContext` injected via the transport's `clientBuilder(...)` and the exchanged bearer via `httpRequestCustomizer(...)` — the three-trust-store rules survive the library (builder methods verified in D-007). The hand-built `McpSyncClient` is handed to the LLM layer via Spring AI's `SyncMcpToolCallbackProvider` (verified in D-008); Spring AI never constructs its own MCP transport.
+MCP calls still go through the official MCP Java client, with the java-spiffe `SSLContext` injected via the transport's `clientBuilder(...)` and the exchanged bearer via `httpRequestCustomizer(...)` — the three-trust-store rules survive the library (builder methods verified in D-010). The hand-built `McpSyncClient` is handed to the LLM layer via Spring AI's `SyncMcpToolCallbackProvider` (verified in D-010); Spring AI never constructs its own MCP transport.
 
-VERIFY: Spring AI and MCP Java SDK pins against VERSIONS.md rows before writing code (human-gated additions; verified facts in D-008). The demo model must support tool calling (e.g. an Ollama tools-capable model); record the choice in DECISIONS at M10.
+VERIFY: Spring AI and MCP Java SDK pins against VERSIONS.md rows before writing code (pinned under standing delegation; verified facts in D-010). The demo model must support tool calling (e.g. an Ollama tools-capable model); model choice recorded in D-010: qwen3.5:4b.
 
 **Exit:**
 1. A natural-language request produces an MCP call whose server log shows `sub` = human and `act.sub` = the agent's SPIFFE ID.
