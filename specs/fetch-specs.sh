@@ -13,7 +13,9 @@ done
 
 mkdir -p spiffe spire
 SPIRE_TAG=v1.15.2   # keep aligned with docs/VERSIONS.md
-for d in plugin_server_upstreamauthority_disk.md plugin_server_nodeattestor_x509pop.md spire_server.md spire_agent.md; do
+for d in plugin_server_upstreamauthority_disk.md plugin_server_nodeattestor_x509pop.md spire_server.md spire_agent.md \
+         plugin_agent_nodeattestor_x509pop.md plugin_server_datastore_sql.md plugin_server_keymanager_disk.md \
+         plugin_agent_keymanager_disk.md plugin_agent_workloadattestor_docker.md; do
   get "https://raw.githubusercontent.com/spiffe/spire/${SPIRE_TAG}/doc/${d}" "spire/${d}"
 done
 for s in SPIFFE-ID X509-SVID JWT-SVID SPIFFE_Trust_Domain_and_Bundle SPIFFE_Federation; do

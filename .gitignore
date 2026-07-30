@@ -1,5 +1,6 @@
 # Never commit key material (infra/pki file contract)
 infra/pki/*-key.pem
+infra/spire/bootstrap/
 *.key
 *.p12
 *.jks

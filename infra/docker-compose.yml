@@ -4,9 +4,11 @@ name: spiffe-mcp-lab
 services:
   spire-server:
     image: ghcr.io/spiffe/spire-server:1.15.2
+    user: "0:0"                             # image default is non-root; named volume is root-owned (lab-only)
     command: ["-config", "/opt/spire/conf/server/server.conf"]
     volumes:
       - ./spire/server.conf:/opt/spire/conf/server/server.conf:ro
+      - ./spire/bootstrap/agent-cacert.pem:/opt/spire/conf/server/agent-cacert.pem:ro
       - ./pki:/opt/spire/pki:ro            # M3: EJBCA-issued intermediate lands here
       - spire-server-data:/opt/spire/data
     healthcheck:
@@ -17,13 +19,22 @@ services:
 
   spire-agent:
     image: ghcr.io/spiffe/spire-agent:1.15.2
+    user: "0:0"                             # needs docker.sock + host pid access for workload attestation (lab-only)
     depends_on:
       spire-server: { condition: service_healthy }
     command: ["-config", "/opt/spire/conf/agent/agent.conf"]
     volumes:
       - ./spire/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+      - ./spire/bootstrap/agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
+      - ./spire/bootstrap/agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # docker workload attestor (M2)
+      - spire-agent-data:/opt/spire/data
       - spire-agent-socket:/tmp/spire-agent/public
-    pid: "host"                             # VERIFY: needed for docker workload attestation on your engine
+    pid: "host"                             # VERIFY (M2): needed for docker workload attestation on your engine
+    healthcheck:
+      test: ["CMD", "/opt/spire/bin/spire-agent", "healthcheck", "-socketPath", "/tmp/spire-agent/public/api.sock"]
+      interval: 5s
+      retries: 10
     networks: [lab]
 
   keycloak:
@@ -34,14 +45,18 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin    # lab only; never reuse
+      KC_HEALTH_ENABLED: "true"             # health endpoints on management port 9000 (26.6.0 observability/health.adoc)
     ports: ["8080:8080"]
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo ok"]  # VERIFY: 26.6 health endpoint/port
+      # In-container probe from 26.6.0 docs/guides/observability/health.adoc:103 (image has no curl)
+      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
       interval: 10s
       retries: 15
     networks: [lab]
 
+  # ---- profile: app (joins default at M4 when mcp-server exists) ----------
   mcp-server:
+    profiles: [app]
     build: ../mcp-server
     depends_on:
       keycloak: { condition: service_healthy }
@@ -63,6 +78,7 @@ services:
 
 volumes:
   spire-server-data:
+  spire-agent-data:
   spire-agent-socket:
   ejbca-data:
 
