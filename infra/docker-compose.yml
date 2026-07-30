@@ -30,7 +30,7 @@ services:
     image: quay.io/keycloak/keycloak:26.6.0
     command:
       - start-dev
-      - --features=preview                  # VERIFY (M0): replace with the narrow flag for SPIFFE client auth
+      - --features=spiffe                   # D-001: Profile.Feature.SPIFFE (preview); CLIENT_AUTH_FEDERATED is default-on
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin    # lab only; never reuse
