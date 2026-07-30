@@ -1,0 +1,18 @@
+server:
+  port: 8443
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/lab
+          # Explicit JWKS URI: issuer-uri alone triggers an OIDC discovery fetch at
+          # startup, but the lab realm is provisioned AFTER boot (setup-realm.sh).
+          # withJwkSetUri is lazy — first fetch happens on first token validation.
+          jwk-set-uri: http://keycloak:8080/realms/lab/protocol/openid-connect/certs
+
+mcp:
+  # Canonical resource identifier = required token audience (D-005).
+  # Stable across M4..M9 even while M4 transport is plain HTTP.
+  resource-id: https://mcp.lab.internal:8443

@@ -8,7 +8,7 @@ Rule: nothing in this repo references an image, dependency, or spec revision not
 | SPIRE server/agent | `1.15.2` | Current release; images `ghcr.io/spiffe/spire-server:1.15.2`, `ghcr.io/spiffe/spire-agent:1.15.2`. | Verified via spiffe.io downloads 2026-07-30 |
 | EJBCA CE | `9.3.7` | Newest CE tag on hub.docker.com/r/keyfactor/ejbca-ce (pushed 2025-12-17; next-older 9.1.1). Pinned by claude-code under explicit user delegation for M3 — see D-004. | Pinned 2026-07-31 |
 | java-spiffe | `x.y.z` | — | **VERIFY: pin from github.com/spiffe/java-spiffe releases before M5** |
-| Java / Spring Boot | 21 / 3.x | — | **VERIFY: pin exact Boot version before M4** |
+| Java / Spring Boot | 21 / `4.1.0` | Latest release per repo1.maven.org maven-metadata.xml (search.maven.org index was stale at 3.5.3 — human caught it); human chose "latest" — see D-005. | Pinned 2026-07-31 |
 | spiffe-client-auth draft | `-02` | June 2026 revision | Pinned; watch datatracker for -03 |
 | MCP spec | `2025-11-25` + July 2026 update | — | **VERIFY: confirm which revision your target client speaks** |
 

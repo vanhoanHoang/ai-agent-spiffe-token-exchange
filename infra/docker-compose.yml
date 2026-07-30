@@ -47,6 +47,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin    # lab only; never reuse
       KC_HEALTH_ENABLED: "true"             # health endpoints on management port 9000 (26.6.0 observability/health.adoc)
+      KC_HOSTNAME: http://keycloak:8080     # D-005: stable issuer for host-minted + in-network-validated tokens
     ports: ["8080:8080"]
     healthcheck:
       # In-container probe from 26.6.0 docs/guides/observability/health.adoc:103 (image has no curl)
@@ -55,15 +56,18 @@ services:
       retries: 15
     networks: [lab]
 
-  # ---- profile: app (joins default at M4 when mcp-server exists) ----------
-  mcp-server:
-    profiles: [app]
+  mcp-server:                               # default profile since M4 (D-003 §3)
     build: ../mcp-server
     depends_on:
       keycloak: { condition: service_healthy }
     volumes:
       - spire-agent-socket:/tmp/spire-agent/public:ro
     ports: ["8443:8443"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8443"]
+      interval: 5s
+      retries: 24
+      start_period: 20s
     networks:
       lab:
         aliases: [mcp.lab.internal]         # own hostname — MCP clients resolve well-known against root domain
