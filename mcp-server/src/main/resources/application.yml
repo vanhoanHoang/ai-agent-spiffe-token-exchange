@@ -20,4 +20,6 @@ mcp:
   resource-id: https://mcp.lab.internal:8443
   # Workload allowlist (M5, comma-separated): which SPIFFE IDs may call at all.
   # Effective permissions stay user-scopes ∩ agent-allowed — this is the outer gate.
-  allowed-spiffe-ids: spiffe://lab.internal/agent-client
+  # test-agent is a permanent fixture proving the D-009 act↔peer binding check
+  # (allowlisted, yet rejected when replaying another workload's token).
+  allowed-spiffe-ids: spiffe://lab.internal/agent-client,spiffe://lab.internal/test-agent

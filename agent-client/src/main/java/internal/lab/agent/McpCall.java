@@ -39,8 +39,16 @@ public final class McpCall {
                     System.getenv().get("SUBJECT_TOKEN"));
             return;
         }
+        if (args.length >= 1 && "svid".equals(args[0])) {
+            // M9 rejection fixture: print this workload's raw JWT-SVID for the
+            // given audience — presented as a bearer it MUST be rejected.
+            try (var source = io.spiffe.workloadapi.DefaultJwtSource.newSource()) {
+                System.out.println(source.fetchJwtSvid(args[1]).getToken());
+            }
+            return;
+        }
         if (args.length != 1) {
-            System.err.println("usage: McpCall <url> | McpCall token <token-endpoint>");
+            System.err.println("usage: McpCall <url> | McpCall token <token-endpoint> | McpCall svid <audience>");
             System.exit(2);
         }
         String token = System.getenv().getOrDefault("TOKEN", "");

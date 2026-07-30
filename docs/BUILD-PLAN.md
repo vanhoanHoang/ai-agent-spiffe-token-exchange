@@ -114,7 +114,7 @@ RFC 8693 **as Keycloak 26.x actually implements it** (verified against the 26.x 
 
 ---
 
-## M8 — Stretch: certificate-bound tokens
+## M8 — Stretch: certificate-bound tokens — **SKIPPED by decision (D-009)**: replaced by the act↔peer binding check enforced at the MCP server; M9 gained a fifth rejection for it.
 
 RFC 8705 `cnf.x5t#S256`. Binds the access token to the workload's SVID, closing the stolen-bearer-token hole in the plain MCP model.
 

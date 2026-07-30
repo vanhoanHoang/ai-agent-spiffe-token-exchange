@@ -14,7 +14,8 @@ PARENT="spiffe://lab.internal/spire/agent/x509pop/${FP}"
 
 srv() { (cd .. && docker compose exec -T spire-server /opt/spire/bin/spire-server "$@"); }
 
-for w in agent-client mcp-server; do
+# test-agent: permanent fixture for the D-009 act↔peer binding rejection (M9)
+for w in agent-client mcp-server test-agent; do
   ID="spiffe://lab.internal/${w}"
   if srv entry show -spiffeID "$ID" | grep -q "$ID"; then
     echo "entry exists: $ID"

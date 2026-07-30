@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import java.util.Map;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -54,8 +59,29 @@ public class SpiffeAllowlistFilter extends OncePerRequestFilter {
             deny(response, "workload not allowlisted");
             return;
         }
+        // D-009 (M8 replacement): if the token asserts an actor, the caller MUST
+        // be that actor — issuance-time proof (JWT-SVID client auth -> act.sub)
+        // chained to call-time proof (X509-SVID key possession -> peer identity).
+        // Runs after the security chain (Boot registers this filter at lowest
+        // precedence), so the validated JWT is in the SecurityContext here.
+        String actSub = actorSub();
+        if (actSub != null && !actSub.equals(peerSpiffeId)) {
+            log.warn("rejecting token replay: act.sub={} but peer={}", actSub, peerSpiffeId);
+            deny(response, "actor/peer mismatch");
+            return;
+        }
         request.setAttribute("mcp.peer.spiffeId", peerSpiffeId);
         chain.doFilter(request, response);
+    }
+
+    private String actorSub() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth
+                && jwtAuth.getToken().getClaim("act") instanceof Map<?, ?> act
+                && act.get("sub") instanceof String sub) {
+            return sub;
+        }
+        return null;
     }
 
     private String peerSpiffeId(HttpServletRequest request) {

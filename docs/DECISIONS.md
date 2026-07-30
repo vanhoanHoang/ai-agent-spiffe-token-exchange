@@ -199,3 +199,17 @@ Decision / findings, proven by `scripts/check-m7.sh` (green):
 Evidence: 26.6.0 token-exchange.adoc; StandardTokenExchangeProvider.java:160-180; OIDCConfigAttributes.java:95; check-m7.sh output in transcript.
 
 Consequences: M8 (cert-bound tokens) is optional garnish per the M7 scope discussion; M9 acceptance can now assert the full happy path plus all four rejections. Draft-isolation intact: a draft rev bump still touches only SpiffeClientAuth.java + Keycloak's own validator (upstream).
+
+---
+
+## D-009 — M8 skipped; replaced by act↔peer binding enforced at the MCP server
+
+Date: 2026-07-31 · Milestone: M8/M9 · Author: claude-code (user decision: "our own idea is use certificate x509 spiffe for agent … ok do it")
+
+Decision:
+1. **M8 (RFC 8705 cert-bound tokens) is not built.** In this architecture the classic stolen-bearer-token attacker is already stopped at the MCP mTLS handshake (M5): no allowlisted SVID, no connection. Full RFC 8705 would additionally require Keycloak TLS with client-cert request and would bind tokens to hourly-rotating X509-SVIDs (tokens dying mid-lifetime on rotation) — cost without proportional lab value.
+2. **The residual gap is closed instead**: token and transport were not cryptographically tied to EACH OTHER, so with ≥2 allowlisted workloads, workload B could replay workload A's token while the audit trail (act.sub=A) lied. The MCP server now enforces `act.sub == mTLS peer SPIFFE ID` → 403 "actor/peer mismatch". Issuance-time proof (JWT-SVID client auth stamped act.sub) is thereby chained to call-time proof (X509-SVID key possession).
+3. **Caveats, stated plainly**: this is policy in the resource server, not a `cnf` claim in the token — it does not travel with the token and protects nothing if transport client auth were ever removed. Tokens WITHOUT an act claim are currently allowed through (audited with sub+peer) so pre-M7 flows keep working; a strict delegation-only mode would reject them.
+4. **Provable, not theoretical**: a second workload `spiffe://lab.internal/test-agent` is registered and allowlisted as a permanent test fixture; the M9 acceptance asserts that test-agent replaying agent-client's exchanged token gets 403 via the binding check (a DIFFERENT code path than the allowlist 403, which the unlisted-workload rejection covers).
+
+Consequences: BUILD-PLAN M8 annotated as skipped-by-decision; M9 gains a fifth rejection. If the lab later wants real sender-constrained tokens, revisit RFC 8705 or DPoP against the SVID-rotation tension.
