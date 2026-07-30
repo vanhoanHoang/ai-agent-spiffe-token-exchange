@@ -43,6 +43,9 @@ services:
     command:
       - start-dev
       - --features=spiffe                   # D-001: Profile.Feature.SPIFFE (preview); CLIENT_AUTH_FEDERATED is default-on
+      - --truststore-paths=/opt/keycloak/truststores/ejbca-root.pem   # M6: validates the https_web bundle endpoint (D-007)
+    volumes:
+      - ./pki/ejbca-root.pem:/opt/keycloak/truststores/ejbca-root.pem:ro
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin    # lab only; never reuse

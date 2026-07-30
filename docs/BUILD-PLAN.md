@@ -104,7 +104,7 @@ Validation checks required by §3.1: well-formed JWT-SVID; `sub`/`aud`/`exp` pre
 
 ## M7 — Token exchange with `act`
 
-RFC 8693 **as Keycloak 26.x actually implements it** (verified against the 26.x securing-apps token-exchange docs, D-006): standard token exchange supports `subject_token`/`audience`/`scope` only — **no `actor_token`, no `resource` parameter, and no native `act` claim**. So the request is: `subject_token` = user token, client authentication = JWT-SVID (`…:jwt-spiffe`), `audience` = the MCP server's client.
+RFC 8693 **as Keycloak 26.x actually implements it** (verified against the 26.x securing-apps token-exchange docs, D-007): standard token exchange supports `subject_token`/`audience`/`scope` only — **no `actor_token`, no `resource` parameter, and no native `act` claim**. So the request is: `subject_token` = user token, client authentication = JWT-SVID (`…:jwt-spiffe`), `audience` = the MCP server's client.
 
 `act.sub` comes from a **custom protocol mapper** (workstream B wakes up for this, not for client auth): the actor is the *authenticated client*, whose identity is already the SPIFFE ID via `jwt.credential.sub`. Semantically faithful to RFC 8693 — the agent is the acting party, and its client authentication already proved who it is.
 
@@ -134,18 +134,22 @@ M8 green without M9 green means the pieces work and the system doesn't. The proj
 
 # Demo track (post-M9, optional)
 
-Presentation layer only. Nothing here gates M0–M9, touches `acceptance.sh`, or enters any validation path. Feasibility, verified library facts, and pins-owed recorded in D-006.
+Presentation layer only. Nothing here gates M0–M9, touches `acceptance.sh`, or enters any validation path. Feasibility, verified library facts, and pins-owed recorded in D-007 and D-008.
 
 ## M10 — AI agent in front of agent-client
 
-A thin agentic loop (Anthropic Java SDK, tool runner) inside `agent-client`'s Spring Boot chassis: the model decides *what* MCP tool to call; the existing SVID → exchange → mTLS path decides *as whom*. The model never touches an SVID, a token, or the exchange. MCP calls go through the official MCP Java client, with the java-spiffe `SSLContext` injected via the transport's `clientBuilder(...)` and the exchanged bearer via `httpRequestCustomizer(...)` — the three-trust-store rules survive the library (builder methods verified in D-006).
+A thin agentic loop inside `agent-client`'s Spring Boot chassis, written against **Spring AI's provider-neutral `ChatClient`/`ChatModel` abstraction** (D-008 — no vendor SDK): the model decides *what* MCP tool to call; the existing SVID → exchange → mTLS path decides *as whom*. The model never touches an SVID, a token, or the exchange.
 
-VERIFY: anthropic-java and MCP Java SDK pins against VERSIONS.md rows before writing code (human-gated additions).
+**Provider is a deployment detail, not code.** Default demo provider: **Ollama, local — free, no API key exists at all.** Any OpenAI-compatible endpoint (Groq, OpenRouter, Gemini's compat layer, …) is a swap of starter dependency + `application.properties` only. Containment rule, mirroring §5 of CLAUDE.md: no `org.springframework.ai.<provider>.*` type appears outside the one Spring configuration class; the loop depends only on `ChatClient`/`ToolCallback`. A provider switch that touches more than the build file and properties means the isolation failed — fix that first.
+
+MCP calls still go through the official MCP Java client, with the java-spiffe `SSLContext` injected via the transport's `clientBuilder(...)` and the exchanged bearer via `httpRequestCustomizer(...)` — the three-trust-store rules survive the library (builder methods verified in D-007). The hand-built `McpSyncClient` is handed to the LLM layer via Spring AI's `SyncMcpToolCallbackProvider` (verified in D-008); Spring AI never constructs its own MCP transport.
+
+VERIFY: Spring AI and MCP Java SDK pins against VERSIONS.md rows before writing code (human-gated additions; verified facts in D-008). The demo model must support tool calling (e.g. an Ollama tools-capable model); record the choice in DECISIONS at M10.
 
 **Exit:**
 1. A natural-language request produces an MCP call whose server log shows `sub` = human and `act.sub` = the agent's SPIFFE ID.
 2. Negative demo: the agent is asked to do something outside `user ∩ agent` scopes; the model attempts it and the MCP server rejects it — enforcement is tokens, not model behavior.
-3. No API key anywhere in the repo (environment only), and `./infra/acceptance.sh` still exits 0, untouched.
+3. The default demo runs with **zero LLM credentials** (local Ollama); if a hosted provider is configured instead, its key lives in the environment only, never the repo. `./infra/acceptance.sh` still exits 0, untouched.
 
 ## M11 — Demo console
 

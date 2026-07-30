@@ -113,3 +113,71 @@ Decision:
 Evidence: `specs/java-spiffe/java-spiffe-provider_README.md` (SslContextOptions/acceptedSpiffeIdsSupplier, provider algorithm "Spiffe", programmatic SpiffeKeyManager/SpiffeTrustManager); Boot 4.1.0 sources jar (`SslManagerBundle.of`, `SslBundle.of(..., managers)`).
 
 Consequences: M9's four rejections map cleanly (no-cert = handshake refusal, unlisted = 403). If the JWT-SVID JWKS path later needs per-ID handshake enforcement, revisit §2.
+
+---
+
+## D-007 — Post-M9 demo track added; Keycloak token-exchange reality check corrects M7
+
+Date: 2026-07-31 · Milestone: planning · Author: claude-code
+
+Decision:
+
+1. **M7 corrected in BUILD-PLAN.md.** Keycloak 26.x **standard token exchange** supports `subject_token`, `audience`, `scope`, `requested_token_type` only. It does **not** support `actor_token`, does **not** support the `resource` parameter ("does not yet have support"), and emits **no `act` claim** natively (`may_act` exists only in an experimental delegation feature behind `parameterized-scopes`). Therefore: the M7 exchange request uses `audience` (not `resource`), and `act.sub` is populated by a **custom protocol mapper** that derives the actor from the *authenticated client* — whose identity is already the SPIFFE ID via `jwt.credential.sub` (D-001 finding 5). The mapper is mandatory, not the contingency BUILD-PLAN previously hedged on. Workstream B (`keycloak-spiffe-spi/`) hosts it — it wakes up for a protocol mapper, not a client authenticator. Consistent with D-005: the canonical identifier `https://mcp.lab.internal:8443` stays the required token `aud`; only the request parameter carrying it changes.
+2. **Post-M9 demo track (M10 AI agent, M11 demo console) added to BUILD-PLAN.md.** Presentation-only; adds no gates to M0–M9 and never enters `acceptance.sh` or any validation path. `agent-client` uses a Spring Boot chassis (Boot 4.1.0 / Java 21 per D-005; author familiarity) under three standing rules: TLS contexts are wired explicitly from java-spiffe material (D-006's SslBundle/SpiffeProvider pattern — never a default trust store deciding a trust root), the token exchange is hand-rolled (Spring's OAuth2 client machinery cannot produce a `jwt-spiffe` assertion), and the assertion-type URN stays exactly one constant per CLAUDE.md §5.
+3. **AI layer holds no workload credentials.** The LLM chooses *what* to call; `agent-client` alone is *who*. The Anthropic API key lives in an environment variable only, never in the repo; the demo narrative must state that the "no client secret exists" claim covers OAuth client authentication — the vendor API key is an unrelated credential outside the trust domain.
+
+Evidence (all fetched 2026-07-31):
+
+- **keycloak.org/securing-apps/token-exchange** (26.x): parameter list; actor_token unsupported; no `resource` support; no `act` claim in standard exchange.
+- **github.com/anthropics/anthropic-sdk-java**: latest v2.52.0 (2026-07-24); tool-runner support present.
+- **github.com/modelcontextprotocol/java-sdk**: official MCP Java SDK, Java 17+ (compatible with D-005's Java 21), coordinates `io.modelcontextprotocol.sdk`; maintained with Spring AI. `mcp-core` `HttpClientStreamableHttpTransport.Builder` exposes `clientBuilder(HttpClient.Builder)` / `customizeClient(Consumer<HttpClient.Builder>)` (→ custom `SSLContext` injectable — the SPIFFE-bundle context can be enforced through the library) and `requestBuilder(...)` / `httpRequestCustomizer(McpSyncHttpClientRequestCustomizer)` (→ Authorization bearer injectable). Verified in source, main branch.
+- java-spiffe 0.8.17 independently confirmed latest on GitHub releases — matches the D-006 pin.
+
+Consequences:
+
+1. **ARCHITECTURE.md needs a human-gated amendment**: §Token flow step 3 says `resource` = MCP server URI — contradicted. Proposed wording: "`audience` = the MCP server's client (Keycloak implements `audience`; it has no `resource` support)". This entry is the record until applied; the `docs/diagrams/` files mirror ARCHITECTURE and get the same one-word fix then.
+2. **VERSIONS.md rows still owed (human-gated):** MCP Java SDK pin + which MCP revision the demo client speaks (satisfies the existing VERIFY row); anthropic-java `2.52.0` (demo track only — not needed before M10). java-spiffe and Spring Boot are already pinned via D-005/D-006.
+3. M9 remains the finish line; the demo track is explicitly optional and cost-bounded (~a weekend after M9).
+
+---
+
+## D-008 — M10 LLM layer reworked: provider-neutral Spring AI abstraction, free/local default (Ollama); Anthropic SDK dropped
+
+Date: 2026-07-31 · Milestone: planning (demo track) · Author: claude-code (user-directed: "I don't have the money for Anthropic API… prefer free LLM… build an abstraction… don't tie to any provider")
+
+Decision:
+
+1. **M10 no longer uses the Anthropic Java SDK.** The agentic loop is written against **Spring AI 2.0's `ChatClient`/`ChatModel` abstraction** — the provider is selected by starter dependency + `application.properties`, never by code. Containment mirrors CLAUDE.md §5: no provider-specific type outside the single Spring configuration class; the loop depends only on `ChatClient`/`ToolCallback`. A provider switch must touch only the build file and properties.
+2. **Default demo provider: Ollama, run locally.** Free, and strictly stronger for the demo narrative than D-007's "API key in env only": **no LLM credential exists anywhere** in the default configuration. Free hosted alternatives (Groq, OpenRouter, Gemini OpenAI-compat) work through Spring AI's OpenAI-compatible client with a `base-url` override — Ollama itself also exposes `http://localhost:11434/v1` OpenAI-compat, per Spring AI's own docs. The demo model must be tool-calling-capable; exact model recorded at M10 implementation, not pinned now.
+3. **D-007's MCP wiring is unchanged and still load-bearing.** The MCP Java client is still built by hand (`clientBuilder(...)` for the java-spiffe `SSLContext`, `httpRequestCustomizer(...)` for the exchanged bearer). It is exposed to the LLM layer via Spring AI's **`SyncMcpToolCallbackProvider`**, which wraps an existing `McpSyncClient` into `ToolCallback`s — Spring AI's MCP auto-configuration is NOT used, so Spring AI never constructs a transport and the three-trust-store rules cannot be bypassed by the framework. (Spring AI's MCP client starter supports supplying your own `McpSyncClient` bean; auto-config backs off via `@ConditionalOnMissingBean`.)
+4. **Supersessions of D-007:** the owed VERSIONS.md row for anthropic-java `2.52.0` is dropped, replaced by an owed row for **Spring AI `2.0.0`** (BOM). D-007 point 3's sentence about the Anthropic API key is superseded by the zero-credential default above. D-007's standing rules (TLS contexts wired explicitly from java-spiffe material; token exchange hand-rolled; assertion-type URN one constant) are unaffected. The MCP Java SDK pin remains owed and must be consistent with the version Spring AI 2.0.0 manages.
+
+Evidence (all fetched 2026-07-31):
+
+- **repo1.maven.org** `org/springframework/ai/spring-ai-bom/maven-metadata.xml`: `<latest>2.0.0</latest>`, `<release>2.0.0</release>`, lastUpdated 2026-06-12 (repo1 is the pin authority per D-005).
+- **spring.io blog 2026-06-12** "Spring AI 2.0.0 GA": built on Spring Boot 4.0 baseline / Spring Framework 7 — compatible with our Boot 4.1.0 pin (D-005). Spring AI 1.x is the Boot 3.x line and is not eligible.
+- **docs.spring.io Spring AI reference** (MCP client starter + Ollama chat pages): `SyncMcpToolCallbackProvider` wraps `McpSyncClient`s into `ToolCallback`s; custom `McpSyncClient` bean overrides auto-config (`@ConditionalOnMissingBean`); `McpClientCustomizer` exists but transport-level SSLContext control still argues for the hand-built client; Ollama is OpenAI-API-compatible (`spring.ai.openai.chat.base-url=http://localhost:11434/v1`) and Spring AI documents cross-provider portability without code changes.
+
+Consequences:
+
+1. BUILD-PLAN.md M10 rewritten in the same commit (abstraction, Ollama default, zero-LLM-credential exit criterion).
+2. **VERSIONS.md rows owed (human-gated):** Spring AI `2.0.0` (BOM); MCP Java SDK pin (unchanged obligation from D-007, now constrained to match Spring AI's managed version); demo model name (recorded at M10, config not pin).
+3. M10's cost profile drops to zero for the LLM leg; hardware capable of running a local tools-capable model becomes the practical prerequisite, with a free hosted OpenAI-compatible endpoint as the fallback path (key in env only).
+
+---
+
+## D-007 — M6 landed: jwt-spiffe against Keycloak preview works; lab findings
+
+Date: 2026-07-31 · Milestone: M6 · Author: claude-code (standing delegation)
+
+Decision / findings, all proven by `scripts/check-m6.sh` (green):
+1. **The exit criterion holds**: agent-client obtains a token with its JWT-SVID as the only credential (`azp=agent-client`). `aud` = realm issuer identifier, sole value, per the normative text.
+2. **`client_id` MUST be the SPIFFE ID** (`spiffe://lab.internal/agent-client`), not the Keycloak clientId: the authenticator rejects otherwise with `client_id parameter does not match sub claim`. The client derives it from its own JWT-SVID — zero client-side identity config.
+3. **Bundle endpoint TLS = lab's web-PKI stand-in.** https_web serves a cert (DNS:spire-server, EKU serverAuth) signed by the SpireIntermediate key; Keycloak validates it via `--truststore-paths=ejbca-root.pem`. The URI name constraint doesn't restrict DNS SANs (RFC 5280 constraints are per-name-type) — deliberate and fine for serverAuth. Issued by `infra/pki/issue-bundle-endpoint-cert.sh`.
+4. **Keycloak auto-generates a secret row for every confidential client**, including federated-jwt ones; it cannot be deleted/blanked via kcadm. "No client secret exists" is enforced in the meaningful sense: none in repo/env, and the check proves the auto-generated value is NOT an accepted credential (401 on client_secret auth).
+5. **SPIRE 1.15.2 doc bug**: `serving_cert_file.file_sync_interval` claims default 1h but empty value crashes the server (`time: invalid duration ""`) — set explicitly. Upstream-reportable.
+6. Negative proven: a valid JWT-SVID whose `sub` is a different workload (mcp-server) is rejected for this client (400 invalid_client).
+
+Evidence: check output in session transcript; Keycloak truststore option from 26.6.0 `keycloak-truststore.adoc`; federation config from `specs/spire/spire_server.md`.
+
+Consequences: M7 rides the same client auth; workstream B builds only the `act` protocol mapper (per the human's revised BUILD-PLAN M7). Two upstream-reportable items so far: none for Keycloak aud (matches normative), one for SPIRE doc default.
