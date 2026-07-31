@@ -63,7 +63,7 @@ With P2.5 in place this becomes interactive: run it once with a consent that wit
 Read-only visualizer per BUILD-PLAN M11: act rail, chain-of-custody panel, token cards, rejection cards, live log tail — fed by JSON captured from a demo run; holds no secrets, validates nothing, killing it changes nothing.
 
 - Demo runs (P2/P2.5/P3 + the five acceptance rejections) emit a structured `demo-run.json` (decoded claims, verdicts, log lines; signatures redacted). The login/consent step is a step in the capture too, so the console can show the human's grant next to the workload's proof.
-- Static page (no backend) renders it offline. **The referenced mockup is not in the repo** — either supply it, or the console gets designed fresh in its style section.
+- Static page (no backend) renders it offline. The mockup now lives at `mockup/identity-demo-console.html` (read-only reference): visual starting point only — static HTML, no login, no data wiring. The console is built per `docs/CONVENTIONS-ANGULAR.md` and `console/CLAUDE.md` (Angular pinned in VERSIONS.md, design tokens extracted from the mockup, `DEMO_RUN` JSON as the single input).
 
 **Exit:** BUILD-PLAN M11 exit — complete run rendered offline from captured JSON.
 

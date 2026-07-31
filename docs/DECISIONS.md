@@ -250,3 +250,23 @@ Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
 Evidence: `scripts/check-p1.sh` green — initialize / tools/list / tools/call over SVID mTLS, scope-gated tool refused, server logged `sub`+`act`, and `./infra/acceptance.sh` still exits 0 untouched.
 
 Consequences: P2 (agentic loop) may begin; the protocol layer it needs is proven. The `has()` pattern is the house style for kcadm existence checks from now on.
+
+---
+
+## D-012 — M10 P2: agentic loop landed; per-request bearer via the SDK's transport-context channel; Angular console groundwork
+
+Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
+
+Decision / findings, proven by `scripts/check-p2.sh` (green):
+
+1. **The loop is exactly the M10 shape**: `ChatClient` (provider-neutral) + `SyncMcpToolCallbackProvider` over a hand-built `McpSyncClient`; java-spiffe `SSLContext` in via `clientBuilder(...)`, exchanged bearer in via `httpRequestCustomizer(...)`. Spring AI constructs no transport. Containment is executable: `check-p2.sh` fails on any non-neutral `org.springframework.ai.*` reference outside one config class — currently **zero provider types exist in code at all** (the Ollama starter autoconfigures `ChatModel`; the provider lives in the build file + properties only).
+2. **Per-request bearer (P2.5-proofing, human-directed mid-session)**: the exchange is a component taking the subject token as an argument, run per message; the bearer travels through the MCP SDK's sanctioned channel — `SyncSpec.transportContextProvider` (supplier runs on the calling thread; `McpSyncClient.java:453`) → `McpTransportContext` → customizer (`McpSyncHttpClientRequestCustomizer` javadoc: "Do not rely on thread-locals... use transportContextProvider"). Fail closed both sides: no bearer in scope → `IllegalStateException`, never an unauthenticated call. Known cosmetic: the SDK's session-cleanup DELETE at shutdown runs outside a bearer scope and trips exactly that check; logged at error-only (`logging.level.io.modelcontextprotocol=error`).
+3. **"sub = alice" precised**: Keycloak subs are UUIDs, not usernames. The check asserts the logged `sub` equals the `sub` decoded from alice's own subject token — the human survived the exchange as the same subject, which is stronger than a name match. (BUILD-PLAN/DEMO-PLAN wording "sub=alice" means this.)
+4. **Property-key recall hazard dodged**: Spring AI 2.0.0 Ollama keys verified from `spring-ai-autoconfigure-model-ollama-2.0.0.jar` `spring-configuration-metadata.json` (`spring.ai.ollama.base-url`, `chat.options.model`, `chat.options.temperature`, `init.pull-model-strategy`). Runtime never pulls (`pull-model-strategy=never`); `infra/ollama/pull-model.sh` is the only pull path. Ollama publishes no host port — lab-network only.
+5. **MCP JSON mapper**: the `mcp` aggregator (via `spring-ai-mcp`) brings `mcp-core` + `mcp-json-jackson3`; the transport's default `McpJsonDefaults.getMapper()` discovers it via ServiceLoader — no explicit wiring.
+6. **CLI compatibility preserved**: Boot-repackaged jar with `AgentMain` dispatcher; `url|token|mcp|svid` modes bypass Spring entirely (M5–M9 checks unaffected; `acceptance.sh` untouched, exit 0 re-verified inside check-p2).
+7. **Angular console groundwork (human-directed: "latest Angular", "conventions Claude Code must enforce, referenced by CLAUDE.md")**: Angular CLI `22.1.2`/core `22.1` pinned from npm registry `latest` (D-005 lesson; VERSIONS.md row added under the D-010 standing delegation — veto window open). Conventions in `docs/CONVENTIONS-ANGULAR.md` (lint-enforced size/complexity/token rules) + `console/CLAUDE.md` (binding); root `CLAUDE.md` map/reference line added **on explicit user instruction this session** (normally ask-first). Mockup arrived at `mockup/identity-demo-console.html` (P4 input, read-only reference).
+
+Evidence: check output in transcript; SDK facts from mcp-core 2.0.0 / spring-ai-mcp 2.0.0 sources jars (repo1); npm registry metadata for Angular pins.
+
+Consequences: P2.5 reuses `TokenExchange`/`BearerHolder`/`AgentLoop` unchanged (adds oauth2-client + a page). P3's fixture is already live (alice's token lacks `mcp:audit`). P4 starts from `console/CLAUDE.md`. Standing user directive this session: continue through the remaining demo phases in one run.

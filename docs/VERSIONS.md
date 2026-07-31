@@ -12,6 +12,7 @@ Rule: nothing in this repo references an image, dependency, or spec revision not
 | Spring AI | `2.0.0` | repo1 metadata; starters depend on Spring Boot 4.1.0 exactly (matches pin). See D-010. | Pinned 2026-07-31 |
 | MCP Java SDK | `2.0.0` (`io.modelcontextprotocol.sdk`) | repo1 + GitHub v2.0.0; transport hooks verified (D-010). | Pinned 2026-07-31 |
 | Ollama / demo model | `ollama/ollama:0.32.5` / `qwen3.5:4b` | hub tags; ollama.com tools catalog (D-010). Demo track only — no validation path. | Pinned 2026-07-31 |
+| Angular (M11 console) | CLI `22.1.2` / core `22.1` | npm registry `latest` 2026-07-31; CLI engines `node ^22.22.3 || ^24.15.0 || >=26.0.0`. Demo track only — no validation path. | Pinned 2026-07-31 |
 | spiffe-client-auth draft | `-02` | June 2026 revision | Pinned; watch datatracker for -03 |
 | MCP spec | `2025-11-25` + July 2026 update | — | **VERIFY: confirm which revision your target client speaks** |
 

@@ -4,18 +4,56 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <!-- Pinned in docs/VERSIONS.md (D-005). Do not bump here. -->
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
     <groupId>internal.lab</groupId>
     <artifactId>agent-client</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>agent-client</name>
-    <description>SVID -&gt; token exchange -&gt; MCP call</description>
+    <description>SVID -&gt; token exchange -&gt; MCP call; M10 agentic loop on top</description>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>21</java.version>
+        <!-- Pinned in docs/VERSIONS.md (D-010). Do not bump here. -->
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- LLM provider = deployment detail (BUILD-PLAN M10): the starter is the
+             ONLY provider-specific piece; no org.springframework.ai.<provider>
+             type may appear in code (scripts/check-p2.sh enforces it). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+        <!-- SyncMcpToolCallbackProvider + the MCP Java SDK (aggregator: mcp-core
+             + mcp-json-jackson3), versions managed by the BOM (D-010). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-mcp</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.spiffe</groupId>
             <artifactId>java-spiffe-provider</artifactId>
@@ -27,33 +65,13 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>internal.lab.agent.McpCall</mainClass>
-                                </transformer>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Dispatcher: CLI modes (M5-M9 checks) stay non-Spring;
+                         "chat" boots the Spring chassis. -->
+                    <mainClass>internal.lab.agent.AgentMain</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

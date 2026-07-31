@@ -88,6 +88,23 @@ services:
     build: ../agent-client
     networks: [lab]
 
+  # ---- profile: demo (M10) ------------------------------------------------
+  # Local LLM for the demo track. No credentials exist; no host port is
+  # published — only workloads on the lab network can reach it. The model
+  # (docs/VERSIONS.md, D-010) is pre-pulled by infra/ollama/pull-model.sh
+  # into the named volume; nothing pulls at runtime.
+  ollama:
+    profiles: [demo]
+    image: ollama/ollama:0.32.5              # pinned per docs/VERSIONS.md (D-010)
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      retries: 12
+      start_period: 20s
+    networks: [lab]
+
   # ---- profile: pki (M3+) -------------------------------------------------
   ejbca:
     profiles: [pki]
@@ -102,6 +119,7 @@ volumes:
   spire-agent-data:
   spire-agent-socket:
   ejbca-data:
+  ollama-models:
 
 networks:
   lab:
