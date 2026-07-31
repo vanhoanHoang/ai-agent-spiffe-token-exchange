@@ -344,3 +344,18 @@ Proven by `scripts/check-p6.sh` (green):
 5. **The animated flow is labeled illustration, honest about what is real**: hop chips animate in order while a message is in flight; verdicts (answer/refusal) and the log lines are the captured/live facts. The model's per-hop timing is not instrumented — the proof remains the server log line.
 
 Consequences: the on-stage surface is now ONE page — http://localhost:8090/console/ — with live chat on top and the recorded anatomy below it. The plain chat page at `/` remains for P2.5's check. Console rebuilds: `npm run build` in `console/`, no container restart needed (volume mount).
+
+---
+
+## D-018 — P6.1 (user-directed): the live flow is now REAL — per-message chain events streamed to the console
+
+Date: 2026-07-31 · Milestone: demo track P6.1 · Author: claude-code (user: "all process must be reflected in real time")
+
+Proven by the extended `scripts/check-p6.sh` (green):
+1. **The chain is instrumented, not simulated.** `AgentLoop.ask(subject, msg, Consumer<StepEvent>)` narrates the per-message chain with REAL completions: `svid` (JWT-SVID minted — emitted between the Workload API fetch and the token POST; `TokenRequest` split into `fetchSvid`-then-`post` for exactly this seam), `exchange` (RFC 8693 done), and `tool` (every actual tool invocation — each `ToolCallback` is wrapped in a delegating narrator, so the event fires when the MODEL decides to call, not on a timer). Details are identity labels and tool names only — never token material.
+2. **`POST /api/chat/stream`** (SSE, `SseEmitter`, loop on a virtual thread; subject token resolved on the request thread) streams each event the moment it happens, then `answer`/`error`. The plain `/api/chat` JSON endpoint stays for compatibility.
+3. **The console consumes the stream** (`LiveClient.chatStream`, hand-rolled SSE reader over `fetch`): hop chips advance on real events (`02 fetch JWT-SVID → 03 exchange · act.sub → 04 mTLS tool call · <name> → 05 answer`), a monospace feed shows each event line as it arrives, and a refusal marks the in-flight hop failed. The previous timer-based illustration is gone — D-017's "labeled illustration" caveat is retired.
+4. The check asserts the events arrive **in order**, carry the tool name, correlate with a fresh `act.sub` log line on the MCP server, and that nothing JWT-shaped reaches the browser; offline console (M11 exit) and acceptance.sh remain green.
+5. SSE wire format note: `SseEmitter` writes `event:name` with no space — check greps and the client parser accept both forms.
+
+Consequences: what the audience sees animate IS the security chain executing. Remaining honest caveat: hop *start* moments are inferred (previous hop's completion); completions are real.

@@ -2,9 +2,12 @@ package internal.lab.agent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * P6: the JSON surface the live console talks to — same origin, session
@@ -30,6 +34,7 @@ public class ChatApiController {
 
     private final AgentLoop loop;
     private final OAuth2AuthorizedClientService clients;
+    private final ExecutorService streams = Executors.newVirtualThreadPerTaskExecutor();
 
     ChatApiController(AgentLoop loop, OAuth2AuthorizedClientService clients) {
         this.loop = loop;
@@ -73,6 +78,42 @@ public class ChatApiController {
             // was logged server-side.
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** P6.1 (D-018): same chat, streamed — each REAL chain event (svid,
+     *  exchange, every tool call) is sent the moment it completes, then the
+     *  answer. The subject token is resolved on the request thread; the loop
+     *  runs on a virtual thread so the emitter can flush as events land. */
+    @PostMapping(value = "/api/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestBody ChatRequest body, OAuth2AuthenticationToken auth) {
+        OAuth2AuthorizedClient client = clients.loadAuthorizedClient(
+                auth.getAuthorizedClientRegistrationId(), auth.getName());
+        String question = body.message() == null ? "" : body.message().strip();
+        if (client == null || question.isEmpty()) {
+            throw new IllegalArgumentException(client == null ? "session_expired" : "empty_message");
+        }
+        String subjectToken = client.getAccessToken().getTokenValue();
+        SseEmitter emitter = new SseEmitter(300_000L);
+        streams.execute(() -> {
+            try {
+                String answer = loop.ask(subjectToken, question,
+                        e -> emit(emitter, e.step(), e.detail()));
+                emit(emitter, "answer", answer);
+                emitter.complete();
+            } catch (Exception e) {
+                emit(emitter, "error", String.valueOf(e.getMessage()));
+                emitter.complete();
+            }
+        });
+        return emitter;
+    }
+
+    private static void emit(SseEmitter emitter, String event, String data) {
+        try {
+            emitter.send(SseEmitter.event().name(event).data(data));
+        } catch (Exception ignored) {
+            // client went away mid-stream; the loop finishes server-side
         }
     }
 }

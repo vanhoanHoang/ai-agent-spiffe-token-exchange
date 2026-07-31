@@ -56,4 +56,73 @@ export class LiveClient {
       return { error: e instanceof Error ? e.message : String(e) };
     }
   }
+
+  /** Streamed chat (D-018): REAL chain events (svid, exchange, tool) arrive
+   *  through onEvent the moment each completes; resolves with the answer. */
+  async chatStream(message: string, onEvent: (step: string, detail: string) => void): Promise<ChatResult> {
+    try {
+      const r = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf },
+        body: JSON.stringify({ message }),
+      });
+      if (!r.ok || r.body === null) {
+        return { error: `HTTP ${r.status}` };
+      }
+      return await readSseStream(r.body, onEvent);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+}
+
+interface SseBlock {
+  readonly event: string;
+  readonly data: string;
+}
+
+function parseSseBlock(block: string): SseBlock | null {
+  let event = '';
+  const data: string[] = [];
+  for (const line of block.split('\n')) {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith('data:')) {
+      data.push(line.slice(5).replace(/^ /, ''));
+    }
+  }
+  return event === '' ? null : { event, data: data.join('\n') };
+}
+
+async function readSseStream(
+  body: ReadableStream<Uint8Array>,
+  onEvent: (step: string, detail: string) => void,
+): Promise<ChatResult> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let result: ChatResult = { error: 'stream ended without an answer' };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return result;
+    }
+    buf += decoder.decode(value, { stream: true });
+    let i = buf.indexOf('\n\n');
+    while (i >= 0) {
+      const block = parseSseBlock(buf.slice(0, i));
+      buf = buf.slice(i + 2);
+      i = buf.indexOf('\n\n');
+      if (block === null) {
+        continue;
+      }
+      if (block.event === 'answer') {
+        result = { answer: block.data };
+      } else if (block.event === 'error') {
+        result = { error: block.data };
+      } else {
+        onEvent(block.event, block.data);
+      }
+    }
+  }
 }

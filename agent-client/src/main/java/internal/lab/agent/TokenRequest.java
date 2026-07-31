@@ -43,7 +43,10 @@ final class TokenRequest {
         // subject-less fetch: the Workload API mints for the CALLER's attested
         // identity — the negative test relies on exactly that.
         JwtSvid svid = source.fetchJwtSvid(issuerIdentifier);
+        return post(svid, tokenEndpoint, subjectToken);
+    }
 
+    static Response post(JwtSvid svid, String tokenEndpoint, String subjectToken) throws Exception {
         // M7 (RFC 8693, Keycloak standard token exchange): subject_token = the
         // human's token; the actor is this authenticated client — no actor_token
         // parameter exists, the act claim is stamped by workstream B's mapper.

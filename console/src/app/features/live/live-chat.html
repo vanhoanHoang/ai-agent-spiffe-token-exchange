@@ -9,17 +9,27 @@
     </span>
   </div>
 
-  <div class="flow" aria-label="what happens to this message, in order">
+  <div class="flow" aria-label="what happens to this message, as it happens">
     <span class="hop human done">01 login ✓</span>
     <span class="arrow"></span>
-    <span class="hop workload done">02 SVID ✓</span>
+    <span class="hop workload" [attr.data-s]="hops().svid">02 fetch JWT-SVID</span>
     <span class="arrow"></span>
-    <span class="hop bridge" [class.active]="phase() === 'flight'">03 exchange · act.sub</span>
+    <span class="hop bridge" [attr.data-s]="hops().exchange">03 exchange · act.sub</span>
     <span class="arrow"></span>
-    <span class="hop ink" [class.active]="phase() === 'flight'" [class.failed]="phase() === 'error'">04 mTLS call</span>
+    <span class="hop ink" [attr.data-s]="hops().call">
+      04 mTLS tool call{{ toolNames().length > 0 ? ' · ' + toolNames().join(', ') : '' }}
+    </span>
     <span class="arrow"></span>
-    <span class="hop ink" [class.done]="phase() === 'done'">05 answer</span>
+    <span class="hop ink" [attr.data-s]="hops().answer">05 answer</span>
   </div>
+
+  @if (feed().length > 0) {
+    <div class="feed" aria-label="real events from the server, in arrival order">
+      @for (line of feed(); track $index) {
+        <div class="feed-line"><span class="feed-step">{{ line.step }}</span> {{ line.detail }}</div>
+      }
+    </div>
+  }
 
   <div class="content">
     @for (t of turns(); track $index) {
@@ -29,7 +39,7 @@
       </div>
     }
     @if (pending()) {
-      <div class="thinking">the model is thinking — the exchange and the mTLS call happen underneath…</div>
+      <div class="thinking">the model is thinking — each hop above lights up the moment it really completes…</div>
     }
     <div class="composer">
       <input #box class="box" placeholder="Ask the agent (try: read the audit log)"
@@ -37,9 +47,9 @@
       <button type="button" class="go" [disabled]="pending()" (click)="send(box)">Send</button>
     </div>
     <p class="footnote">
-      Every message runs the full chain live: session token → RFC 8693 exchange →
-      mTLS MCP call. The proof is the server log line with <code>sub</code> and
-      <code>act.sub</code> — the recorded panels below explain each hop.
+      The hops are streamed from the agent as they complete — fetch JWT-SVID, RFC 8693
+      exchange, the model's actual tool calls over mTLS. The server-side proof is the
+      log line with <code>sub</code> and <code>act.sub</code>; the panels below are its anatomy.
     </p>
   </div>
 </div>

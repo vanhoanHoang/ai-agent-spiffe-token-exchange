@@ -85,8 +85,29 @@ echo "$logs" | grep "tool=" | grep -q "act={sub=$AGENT_ID}" \
   || fail "no MCP call with act.sub=$AGENT_ID since $T0"
 echo "OK: live console chat produced an MCP call; server logged act.sub=$AGENT_ID"
 
+# ---- 3b. Real-time stream: the chain's actual events, in order -------------
+T1=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+curl -s -N -b "$JAR" --max-time 300 -H "Content-Type: application/json" -H "X-CSRF-TOKEN: $CSRF" \
+  -d '{"message":"Use the whoami tool, then state which workload and which human you are acting for."}' \
+  "$WEB/api/chat/stream" | save stream.txt >/dev/null
+for ev in svid exchange tool answer; do
+  grep -q "^event: *$ev" "$WORK/stream.txt" || fail "stream lacks event '$ev': $(head -c 400 "$WORK/stream.txt")"
+done
+# order: svid before exchange before tool before answer
+seq=$(grep '^event:' "$WORK/stream.txt" | sed 's/^event: *//' | tr '\n' ' ')
+python - "$seq" <<'EOF' || { echo "P6 FAIL: stream events out of order: $seq"; exit 1; }
+import sys
+evs = sys.argv[1].split()
+order = [evs.index(e) for e in ("svid", "exchange", "tool", "answer")]
+sys.exit(0 if order == sorted(order) else 1)
+EOF
+grep '^event: *tool' -A1 "$WORK/stream.txt" | grep -q "whoami" || fail "tool event lacks the tool name"
+logs=$(cd infra && docker compose logs --since "$T1" mcp-server 2>/dev/null)
+echo "$logs" | grep "tool=whoami" | grep -q "act={sub=$AGENT_ID}" || fail "streamed chat produced no logged MCP call"
+echo "OK: live stream emits real chain events in order (svid -> exchange -> tool -> answer)"
+
 # ---- 4. Token hygiene ------------------------------------------------------
-grep -hE "$JWT_RE" "$WORK"/console.html "$WORK"/me.json "$WORK"/chat.json >/dev/null 2>&1 \
+grep -hE "$JWT_RE" "$WORK"/console.html "$WORK"/me.json "$WORK"/chat.json "$WORK"/stream.txt >/dev/null 2>&1 \
   && fail "a token-shaped string reached the browser" || true
 echo "OK: no token-shaped string in any browser-visible response"
 
