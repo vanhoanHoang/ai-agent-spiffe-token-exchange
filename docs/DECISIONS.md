@@ -417,3 +417,18 @@ Date: 2026-07-31 · Milestone: demo track P6.5 · Author: claude-code
 Evidence: Keycloak `TOKEN_EXCHANGE_ERROR` log lines + clock check in transcript; javap output in transcript; `/api/svid` live response (leaf TTL 1h) in transcript; check-p25 PASS and check-p6 PASS outputs in transcript; console suite 31 tests green.
 
 Consequences: the console can now show the actual rotating certificate on stage — the "auto loaded" story is demonstrable, not narrated. Sessions survive access-token expiry for the length of Keycloak's SSO session (idle 30 min default); past that, the API answers 401 and the console shows the login banner.
+
+---
+
+## D-023 — P6.6 (user-directed, PKI-expert audience): full X.509 detail view + rotation countdown
+
+Date: 2026-07-31 · Milestone: demo track P6.6 · Author: claude-code
+
+1. **`/api/svid` now carries a complete per-certificate breakdown** (`X509Details`): version, signature algorithm, public key (type + size), and EVERY extension — decoded where the JDK or a ~100-line DER TLV walker (`Der.java`) can render it (Key Usage, EKU, Basic Constraints, SAN, SKI/AKI keyids, **Name Constraints** — the EJBCA intermediate shows `critical, Permitted: URI:lab.internal`), raw hex + OID otherwise, never omitted. Display-only code, explicitly NOT a validation path (per-extension decode failure degrades to hex — documented in the class javadoc so nobody mistakes it for catch-and-permit). DN rendering maps OID 2.5.4.5 → `SERIALNUMBER` (SPIRE stamps that RDN; the default rendering is `2.5.4.5=#<hex>` noise). Still metadata-only: no key, no PEM (check-p6 asserts absence, plus presence of details and the name-constraint string).
+2. **Console presentation for experts without clutter (progressive disclosure)**: the compact chain rows stay; each certificate gains a "▸ full certificate" expander (`dc-cert-detail`) rendering the openssl `x509 -text` layout PKI people already read. One expanded at a time.
+3. **Rotation countdown (user-requested)**: pure functions in `rotation.ts` — SPIRE renews at ~half TTL (lab config `default_x509_svid_ttl = 1h`, read from `infra/spire/server.conf`), so the panel ticks "leaf expires in X · rotation expected in Y", labeled as an estimate. When the estimate comes due the panel auto-refetches every 30s until the new leaf lands — rotation appears on stage without touching the page.
+4. Console suite 36 tests; countdown math unit-tested clock-free.
+
+Evidence: live `/api/svid` output in transcript (all five chain certs decoded; AKI→SKI links visible across the chain); check-p6 PASS (run of record below); JDK `X500Principal.getName(format, oidMap)` used for DN keywords.
+
+Consequences: the stage-02 panel is now sufficient for a PKI-literate audience end-to-end: chain-of-custody story (captured), the real chain (live), the name constraint readable, and rotation observable within a ~30-min session. The `Der` walker is deliberately minimal — if a future cert renders `raw:` hex for something worth decoding, extend the walker, don't reach for BouncyCastle without a decision entry.

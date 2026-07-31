@@ -19,6 +19,21 @@ export interface ChatResult {
   readonly error?: string;
 }
 
+/** One decoded X.509 extension, openssl-text style. */
+export interface CertExtension {
+  readonly oid: string;
+  readonly name: string;
+  readonly critical: boolean;
+  readonly value: string;
+}
+
+export interface CertDetails {
+  readonly version: number;
+  readonly signatureAlgorithm: string;
+  readonly publicKey: string;
+  readonly extensions: readonly CertExtension[];
+}
+
 /** Public metadata of one certificate in the live X.509-SVID chain. */
 export interface LiveCert {
   readonly role: string;
@@ -29,6 +44,7 @@ export interface LiveCert {
   readonly notAfter: string;
   readonly uriSans: readonly string[];
   readonly sha256: string;
+  readonly details?: CertDetails;
 }
 
 export interface LiveSvid {

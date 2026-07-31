@@ -56,15 +56,19 @@ public class SvidApiController {
         if (!seen.add(fingerprint)) {
             return; // the bundle may repeat a cert already in the SVID chain
         }
+        // SPIRE stamps a serialNumber RDN; without the keyword map it renders
+        // as "2.5.4.5=#<der-hex>", which is noise for the expert view.
+        Map<String, String> oidNames = Map.of("2.5.4.5", "SERIALNUMBER");
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("role", role);
-        m.put("subject", cert.getSubjectX500Principal().getName());
-        m.put("issuer", cert.getIssuerX500Principal().getName());
+        m.put("subject", cert.getSubjectX500Principal().getName("RFC2253", oidNames));
+        m.put("issuer", cert.getIssuerX500Principal().getName("RFC2253", oidNames));
         m.put("serial", cert.getSerialNumber().toString(16));
         m.put("notBefore", cert.getNotBefore().toInstant().toString());
         m.put("notAfter", cert.getNotAfter().toInstant().toString());
         m.put("uriSans", uriSans(cert));
         m.put("sha256", fingerprint);
+        m.put("details", X509Details.of(cert));
         chain.add(m);
     }
 

@@ -5,6 +5,13 @@
   </div>
   <div class="content">
     <p class="id">{{ svid().spiffeId }}</p>
+    @if (rotation(); as r) {
+      <p class="rotation">
+        leaf expires in <strong>{{ r.expires }}</strong>
+        · rotation expected in <strong>{{ r.rotates }}</strong>
+        <span class="note">(SPIRE renews at ~half of the 1h TTL — estimate)</span>
+      </p>
+    }
     @for (c of svid().chain; track c.sha256) {
       <div class="cert">
         <span class="dot"></span>
@@ -15,13 +22,18 @@
         }
         <div class="detail">serial {{ c.serial }}</div>
         <div class="detail">valid {{ c.notBefore }} → {{ c.notAfter }}</div>
-        <div class="detail" [title]="c.sha256">sha256 {{ short(c.sha256) }}</div>
         <div class="detail muted">issued by {{ cn(c.issuer) }}</div>
+        <button type="button" class="expand" (click)="toggle(c.sha256)">
+          {{ expanded() === c.sha256 ? '▾ hide full certificate' : '▸ full certificate' }}
+        </button>
+        @if (expanded() === c.sha256) {
+          <dc-cert-detail [cert]="c" />
+        }
       </div>
     }
     <p class="footnote">
-      Fetched live from the agent's Workload API. Refresh after a rotation:
-      the leaf serial and validity window change, the SPIFFE ID does not.
+      Fetched live from the agent's Workload API. After a rotation the leaf's
+      serial and validity change; the SPIFFE ID and the chain above it do not.
     </p>
   </div>
 </div>

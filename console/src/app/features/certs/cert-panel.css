@@ -36,8 +36,36 @@
 .id {
   font-family: var(--font-mono);
   font-size: 14px;
-  margin: 0 0 12px;
+  margin: 0 0 6px;
   word-break: break-all;
+}
+
+.rotation {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.rotation strong {
+  font-family: var(--font-mono);
+  color: var(--id-workload);
+}
+
+.rotation .note {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.expand {
+  display: block;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--id-workload);
+  background: none;
+  border: 0;
+  padding: 0;
 }
 
 .cert {

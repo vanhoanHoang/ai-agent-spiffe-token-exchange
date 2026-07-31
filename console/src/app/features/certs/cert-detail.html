@@ -1,0 +1,19 @@
+<div class="text">
+  <div class="row"><span class="k">Version:</span> {{ cert().details?.version ?? '?' }}</div>
+  <div class="row"><span class="k">Serial Number:</span> {{ cert().serial }}</div>
+  <div class="row"><span class="k">Signature Algorithm:</span> {{ cert().details?.signatureAlgorithm }}</div>
+  <div class="row"><span class="k">Issuer:</span> {{ cert().issuer }}</div>
+  <div class="row indent"><span class="k">Not Before:</span> {{ cert().notBefore }}</div>
+  <div class="row indent"><span class="k">Not After:</span> {{ cert().notAfter }}</div>
+  <div class="row"><span class="k">Subject:</span> {{ cert().subject }}</div>
+  <div class="row"><span class="k">Public Key:</span> {{ cert().details?.publicKey }}</div>
+  <div class="row"><span class="k">X509v3 extensions:</span></div>
+  @for (e of cert().details?.extensions ?? []; track e.oid) {
+    <div class="row indent">
+      <span class="k">{{ e.name }}{{ e.critical ? ' (critical)' : '' }}:</span>
+    </div>
+    <div class="row indent2">{{ e.value }}</div>
+  }
+  <div class="row"><span class="k">Fingerprint (SHA-256):</span></div>
+  <div class="row indent2">{{ cert().sha256 }}</div>
+</div>

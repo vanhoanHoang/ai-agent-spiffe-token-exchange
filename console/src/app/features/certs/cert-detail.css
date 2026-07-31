@@ -1,0 +1,28 @@
+.text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  background: var(--surface-page);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.row {
+  word-break: break-all;
+}
+
+.row.indent {
+  padding-left: 2ch;
+}
+
+.row.indent2 {
+  padding-left: 4ch;
+  color: var(--text-secondary);
+}
+
+.k {
+  color: var(--id-workload);
+}

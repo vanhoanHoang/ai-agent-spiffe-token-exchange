@@ -54,6 +54,11 @@ grep -q '"spiffeId":"spiffe://lab.internal/agent-client"' "$WORK/svid.json" \
   || fail "/api/svid does not name the agent's SPIFFE ID"
 grep -q '"role":"leaf"' "$WORK/svid.json" && grep -q '"serial"' "$WORK/svid.json" \
   || fail "/api/svid missing leaf/serial metadata"
+# P6.6 expert view: full details incl. the EJBCA intermediate's name constraint
+grep -q '"signatureAlgorithm"' "$WORK/svid.json" \
+  || fail "/api/svid missing certificate details"
+grep -q 'Permitted: URI:lab.internal' "$WORK/svid.json" \
+  || fail "/api/svid does not surface the URI name constraint"
 grep -qi 'PRIVATE KEY\|BEGIN CERTIFICATE' "$WORK/svid.json" \
   && fail "/api/svid leaks key/PEM material" || true
 echo "OK: /api/svid serves the live chain metadata (no key, no PEM)"

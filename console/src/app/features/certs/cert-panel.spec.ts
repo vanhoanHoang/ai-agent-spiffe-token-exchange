@@ -15,6 +15,20 @@ const SVID: LiveSvid = {
       notAfter: '2026-07-31T11:00:00Z',
       uriSans: ['spiffe://lab.internal/agent-client'],
       sha256: 'deadbeef'.repeat(8),
+      details: {
+        version: 3,
+        signatureAlgorithm: 'SHA256withECDSA',
+        publicKey: 'EC, 256 bit (P-256)',
+        extensions: [
+          { oid: '2.5.29.15', name: 'Key Usage', critical: true, value: 'Digital Signature' },
+          {
+            oid: '2.5.29.17',
+            name: 'Subject Alternative Name',
+            critical: false,
+            value: 'URI:spiffe://lab.internal/agent-client',
+          },
+        ],
+      },
     },
     {
       role: 'trust-anchor',
@@ -25,6 +39,19 @@ const SVID: LiveSvid = {
       notAfter: '2036-01-01T00:00:00Z',
       uriSans: [],
       sha256: 'cafe0123'.repeat(8),
+      details: {
+        version: 3,
+        signatureAlgorithm: 'SHA256withECDSA',
+        publicKey: 'EC, 256 bit (P-256)',
+        extensions: [
+          {
+            oid: '2.5.29.30',
+            name: 'Name Constraints',
+            critical: true,
+            value: 'Permitted: URI:lab.internal',
+          },
+        ],
+      },
     },
   ],
 };
@@ -55,5 +82,26 @@ describe('CertPanel', () => {
     fixture.componentInstance.reload.subscribe(() => (reloaded = true));
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.reload')?.click();
     expect(reloaded).toBe(true);
+  });
+
+  it('shows the rotation countdown line for the leaf', async () => {
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.rotation')?.textContent).toContain('leaf expires in');
+    expect(el.querySelector('.rotation')?.textContent).toContain('rotation expected in');
+  });
+
+  it('expands a certificate into the full openssl-style detail', async () => {
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('dc-cert-detail')).toBeFalsy();
+
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.expand')).at(-1)?.click();
+    await fixture.whenStable();
+    const detail = el.querySelector('dc-cert-detail');
+    expect(detail?.textContent).toContain('Signature Algorithm: SHA256withECDSA');
+    expect(detail?.textContent).toContain('Name Constraints (critical):');
+    expect(detail?.textContent).toContain('Permitted: URI:lab.internal');
+    expect(detail?.textContent).toContain('Fingerprint (SHA-256):');
   });
 });
