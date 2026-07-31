@@ -57,6 +57,16 @@ export class LiveClient {
     }
   }
 
+  /** Ends the session (CSRF-protected POST) so a re-login can change the
+   *  consented scopes without leaving the console. */
+  async logout(): Promise<void> {
+    try {
+      await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': this.csrf } });
+    } catch {
+      // session is gone either way; the reload lands on the login banner
+    }
+  }
+
   /** Streamed chat (D-018): REAL chain events (svid, exchange, tool) arrive
    *  through onEvent the moment each completes; resolves with the answer. */
   async chatStream(message: string, onEvent: (step: string, detail: string) => void): Promise<ChatResult> {

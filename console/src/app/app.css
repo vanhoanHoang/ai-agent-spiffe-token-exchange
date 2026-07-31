@@ -138,6 +138,19 @@ main {
   gap: var(--space-4);
 }
 
+.play {
+  font: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--id-bridge);
+  background: none;
+  border: 1px solid var(--id-bridge);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+}
+
 .login-banner {
   background: var(--surface-panel);
   border: 1px solid var(--border-panel);

@@ -3,7 +3,6 @@ package internal.lab.agent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -30,8 +29,10 @@ public class WebSecurityConfig {
                         .requestMatchers("/", "/error", "/console/**", "/api/me").permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.csrfTokenRequestHandler(plainCsrf))
-                .oauth2Login(Customizer.withDefaults())
-                .logout(logout -> logout.logoutSuccessUrl("/"));
+                // Login initiated from the console must RETURN to the console —
+                // the live panel is the demo surface (P6.2, user-reported).
+                .oauth2Login(login -> login.defaultSuccessUrl("/console/"))
+                .logout(logout -> logout.logoutSuccessUrl("/console/"));
         return http.build();
     }
 }

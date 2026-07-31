@@ -1,0 +1,78 @@
+<svg viewBox="0 0 1400 400" role="img" aria-label="architecture: alice, Keycloak, agent, SPIRE, root CA, MCP server">
+  <defs>
+    <marker id="ah-human" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="fill-human" />
+    </marker>
+    <marker id="ah-work" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="fill-workload" />
+    </marker>
+    <marker id="ah-bridge" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="fill-bridge" />
+    </marker>
+    <marker id="ah-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="fill-ink" />
+    </marker>
+  </defs>
+
+  <path id="p-login" d="M240,178 C350,178 400,52 500,52" class="edge human" [class.on]="on('login')" marker-end="url(#ah-human)" />
+  <path id="p-chat" d="M240,226 L512,226" class="edge human" [class.on]="on('chat')" marker-end="url(#ah-human)" />
+  <path id="p-svid" d="M640,300 L640,258" class="edge workload" [class.on]="on('svid')" marker-end="url(#ah-work)" />
+  <path id="p-pki" d="M240,340 L492,340" class="edge workload" [class.on]="on('pki')" marker-end="url(#ah-work)" />
+  <path id="p-exch" d="M640,150 L640,108" class="edge bridge" [class.on]="on('exch')" marker-end="url(#ah-bridge)" />
+  <path id="p-call" d="M760,200 L1072,200" class="edge ink" [class.on]="on('call')" marker-end="url(#ah-ink)" />
+
+  <circle r="7" class="packet human" [class.on]="on('login')"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#p-login" /></animateMotion></circle>
+  <circle r="7" class="packet human" [class.on]="on('chat')"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#p-chat" /></animateMotion></circle>
+  <circle r="7" class="packet workload" [class.on]="on('svid')"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#p-svid" /></animateMotion></circle>
+  <circle r="7" class="packet workload" [class.on]="on('pki')"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#p-pki" /></animateMotion></circle>
+  <circle r="8" class="packet bridge" [class.on]="on('exch')"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#p-exch" /></animateMotion></circle>
+  <circle r="8" class="packet bridge" [class.on]="on('call')"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#p-call" /></animateMotion></circle>
+
+  <text x="316" y="112" text-anchor="middle" font-size="17" class="lbl" [class.on]="on('login')">OIDC login</text>
+  <text x="316" y="134" text-anchor="middle" font-size="15" class="lbl sub" [class.on]="on('login')">access token · aud=agent-client</text>
+  <text x="376" y="216" text-anchor="middle" font-size="17" class="lbl" [class.on]="on('chat')">prompt</text>
+  <text x="660" y="288" font-size="17" class="lbl" [class.on]="on('svid')">issues X.509-SVID leaf + JWT-SVID</text>
+  <text x="366" y="326" text-anchor="middle" font-size="17" class="lbl" [class.on]="on('pki')">signs the intermediate</text>
+  <text x="366" y="366" text-anchor="middle" font-size="15" class="lbl sub" [class.on]="on('pki')">name constraints: URI=lab.internal</text>
+  <text x="660" y="140" font-size="17" class="lbl" [class.on]="on('exch')">RFC 8693 exchange</text>
+  <text x="660" y="120" font-size="15" class="lbl sub" [class.on]="on('exch')">→ adds act.sub</text>
+  <text x="916" y="184" text-anchor="middle" font-size="17" class="lbl" [class.on]="on('call')">mTLS + exchanged token</text>
+  <text x="916" y="228" text-anchor="middle" font-size="15" class="lbl sub" [class.on]="on('call')">act.sub must equal the mTLS peer</text>
+
+  <g class="node human">
+    <rect x="40" y="150" width="200" height="100" rx="4" />
+    <text x="60" y="180" class="kicker">HUMAN</text>
+    <text x="60" y="209" class="name">alice</text>
+    <text x="60" y="232" class="mono">sub · consented scopes</text>
+  </g>
+  <g class="node human">
+    <rect x="500" y="10" width="280" height="90" rx="4" />
+    <text x="520" y="40" class="kicker">ISSUER</text>
+    <text x="520" y="69" class="name">Keycloak</text>
+    <text x="520" y="90" class="mono">realms/lab</text>
+  </g>
+  <g class="node workload">
+    <rect x="520" y="150" width="240" height="100" rx="4" />
+    <text x="540" y="180" class="kicker">WORKLOAD · AI AGENT</text>
+    <text x="540" y="209" class="name">agent-client</text>
+    <text x="540" y="232" class="mono">no client secret</text>
+  </g>
+  <g class="node workload">
+    <rect x="500" y="300" width="280" height="80" rx="4" />
+    <text x="520" y="326" class="kicker">ATTESTATION · INTERMEDIATE CA</text>
+    <text x="520" y="355" class="name">SPIRE Server</text>
+    <text x="520" y="374" class="mono">mints SVIDs from its CA</text>
+  </g>
+  <g class="node workload dashed">
+    <rect x="40" y="300" width="200" height="80" rx="4" />
+    <text x="60" y="326" class="kicker">PKI · TRUST ANCHOR</text>
+    <text x="60" y="355" class="name">Lab Root CA</text>
+    <text x="60" y="374" class="mono">EJBCA · offline</text>
+  </g>
+  <g class="node ink">
+    <rect x="1080" y="150" width="280" height="100" rx="4" />
+    <text x="1100" y="180" class="kicker">RESOURCE</text>
+    <text x="1100" y="209" class="name">MCP server</text>
+    <text x="1100" y="232" class="mono">aud · peer · allowlist · act</text>
+  </g>
+</svg>

@@ -39,6 +39,11 @@ export class LiveChat {
 
   protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
 
+  protected async logout(): Promise<void> {
+    await this.live.logout();
+    window.location.assign('/console/');
+  }
+
   protected send(box: HTMLInputElement): void {
     const message = box.value.trim();
     if (message === '' || this.pending()) {

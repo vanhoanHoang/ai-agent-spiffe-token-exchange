@@ -43,6 +43,17 @@
 
     <section>
       <div class="section-head">
+        <h2>How one call proves two identities</h2>
+        <span class="rule"></span>
+        <button type="button" class="play" (click)="togglePlay()">
+          {{ playing() ? '■ stop' : '▶ play the flow' }}
+        </button>
+      </div>
+      <dc-flow-diagram [stage]="stageId()" />
+    </section>
+
+    <section>
+      <div class="section-head">
         <h2>The happy path</h2>
         <span class="rule"></span>
         <span class="kicker muted">Click a step</span>

@@ -68,6 +68,11 @@ EOF
   curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "${CARGS[@]}" -d accept=Yes "$CACTION" >/dev/null
 fi
 
+# Login must END on the console — the live panel is the point (user-reported).
+FINAL=$(curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" -o /dev/null -w '%{url_effective}' "$WEB/oauth2/authorization/keycloak")
+echo "$FINAL" | grep -q "/console" || fail "login does not land on the console: $FINAL"
+echo "OK: login flow returns to /console/"
+
 ME=$(curl -s -b "$JAR" "$WEB/api/me")
 echo "$ME" | save me.json | grep -q '"username":"alice"' || fail "/api/me after login: $ME"
 CSRF=$(echo "$ME" | grep -o '"csrf":"[^"]*"' | cut -d'"' -f4)

@@ -13,6 +13,7 @@ import {
 import { CallChecksPanel } from './features/call/call-checks-panel';
 import { ChatPanel } from './features/chat/chat-panel';
 import { CustodyPanel } from './features/custody/custody-panel';
+import { FlowDiagram } from './features/diagram/flow-diagram';
 import { RunHeader } from './features/header/run-header';
 import { LiveChat } from './features/live/live-chat';
 import { LogPanel } from './features/log/log-panel';
@@ -33,6 +34,7 @@ import { TokenCard } from './shared/ui/token-card';
     RejectionGrid,
     LogPanel,
     LiveChat,
+    FlowDiagram,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -85,8 +87,40 @@ export class App {
     void this.liveClient.me().then((s) => this.liveState.set(s));
   }
 
+  protected readonly playing = signal(false);
+  private playTimer: ReturnType<typeof setInterval> | null = null;
+
   protected select(id: string): void {
+    this.stopPlay();
     this.stageId.set(id);
+  }
+
+  /** The mockup's play behavior: walk the five stages, packets and all. */
+  protected togglePlay(): void {
+    if (this.playing()) {
+      this.stopPlay();
+      return;
+    }
+    this.playing.set(true);
+    this.stageId.set(STAGES[0].id);
+    this.playTimer = setInterval(() => this.advance(), 4000);
+  }
+
+  private advance(): void {
+    const i = STAGES.findIndex((s) => s.id === this.stageId());
+    if (i >= STAGES.length - 1) {
+      this.stopPlay();
+      return;
+    }
+    this.stageId.set(STAGES[i + 1].id);
+  }
+
+  private stopPlay(): void {
+    if (this.playTimer !== null) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+    }
+    this.playing.set(false);
   }
 
   private step(id: string): DemoStep | undefined {

@@ -359,3 +359,17 @@ Proven by the extended `scripts/check-p6.sh` (green):
 5. SSE wire format note: `SseEmitter` writes `event:name` with no space — check greps and the client parser accept both forms.
 
 Consequences: what the audience sees animate IS the security chain executing. Remaining honest caveat: hop *start* moments are inferred (previous hop's completion); completions are real.
+
+---
+
+## D-019 — P6.2 (user-reported + user-requested): login stays on the console; the mockup's animated architecture diagram ported
+
+Date: 2026-07-31 · Milestone: demo track P6.2 · Author: claude-code
+
+1. **Login returns to the console** (user-reported: authentication dumped them on the plain page): `defaultSuccessUrl("/console/")` and logout success likewise; the live panel gains a "log out · switch scopes" button (CSRF-protected POST /logout via fetch) so the P3 consent toggle is doable without ever leaving the console. check-p6 now asserts the login flow's final URL contains /console.
+2. **The mockup's animated architecture diagram is in** (user-noticed it was missing): `dc-flow-diagram` ports the SVG verbatim in structure — six nodes, SMIL `animateMotion` packet dots, per-edge arrowheads — restyled onto the token palette (no raw hex). Edges/packets/labels light per selected stage; a **play** button walks the five stages (the mockup's play behavior). Tested: nodes render, edges follow the stage, packets toggle.
+3. **Angular build cache disabled for this project** (`cli.cache.enabled=false`): the cache repeatedly corrupted when `ng test`/`ng serve`/`ng build` interleaved ("contents must be a string or a Uint8Array"), the third occurrence today. Deterministic builds beat the saved seconds; the check's `rm -rf .angular` guards remain for older clones.
+
+Evidence: `scripts/check-p6.sh` green end-to-end (including the new console-return assertion); console suite 25 tests green.
+
+Consequences: the console is now the single demo surface — diagram + live chat + recorded anatomy on one page. Full check runtime grew past 10 minutes (two model inferences + nested offline check, uncached builds); acceptable for an exit criterion, not for a smoke test — `demo/checklist.sh` remains the fast pre-flight.
