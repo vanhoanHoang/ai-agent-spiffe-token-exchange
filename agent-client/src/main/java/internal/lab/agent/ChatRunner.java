@@ -22,6 +22,9 @@ public class ChatRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        if (args.length == 0 || !"chat".equals(args[0])) {
+            return; // web mode boots the same context; only CLI chat runs this
+        }
         String prompt = String.join(" ", Arrays.copyOfRange(args, 1, args.length)).trim();
         if (prompt.isEmpty()) {
             throw new IllegalArgumentException("usage: chat <message>");

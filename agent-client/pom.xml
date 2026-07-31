@@ -41,6 +41,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
+        <!-- P2.5 web mode only (profile "web"): browser login for alice.
+             CLI chat stays non-web (web-application-type=none). The exchange
+             stays hand-rolled — oauth2-client here is alice's LOGIN, never
+             the agent's credential (that is the JWT-SVID, and only it). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
         <!-- LLM provider = deployment detail (BUILD-PLAN M10): the starter is the
              ONLY provider-specific piece; no org.springframework.ai.<provider>
              type may appear in code (scripts/check-p2.sh enforces it). -->

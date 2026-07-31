@@ -284,3 +284,19 @@ Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
 Evidence: check-p3 and capture output in transcript; demo/demo-run.json in-repo (committed as the console fixture).
 
 Consequences: P4 renders this file; P2.5 will extend the capture's login step (kind: consent) when it lands.
+
+---
+
+## D-014 — M10 P2.5: browser OIDC login + chat UI; consent is the delegation moment
+
+Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
+
+Proven by `scripts/check-p25.sh` (green):
+1. **The flow**: alice logs in at the agent's page via authorization code + **PKCE** (public client `demo-web`, `client-authentication-method=none` → Spring Security auto-PKCE, S256 enforced client-side by Keycloak attribute), **consents** (`consentRequired=true`; the check force-revokes prior consent every run so the moment is always real and FAILS if the screen does not appear), chats; per message her session token is the subject of the RFC 8693 exchange (`AgentLoop`/`TokenExchange`/`BearerHolder` from D-012, unchanged — the P2 per-request design paid off exactly as intended).
+2. **Token hygiene enforced, not claimed**: the check greps every browser-visible response for JWT-shaped strings (3 dot-separated base64url segments) — none may appear; alice's token lives in the server-side session, the browser holds a cookie.
+3. **Scope toggle wired for the interactive P3**: two login links — `/oauth2/authorization/keycloak` and `.../keycloak-audit` (adds optional `mcp:audit`) — what alice grants at consent decides what the agent may do.
+4. **oauth2-client is alice's login leg only.** The agent's own credential remains the JWT-SVID; the exchange remains hand-rolled (D-007 standing rule intact). `demo-web` config lives in `infra/keycloak/setup-demo-web.sh` (idempotent, D-011 has() pattern); acceptance.sh does not know it exists.
+5. **Host-browser note**: issuer is `http://keycloak:8080` (D-005), so the check maps that name to 127.0.0.1 via `curl --resolve`; a human browser needs the equivalent hosts-file line — goes into the P5 checklist.
+6. Scripting findings: Keycloak 26.6.0 renders the consent form action **relative** (qualify against the issuer), and the consent POST needs the `accept` param present (value irrelevant) plus the hidden `code` field replayed.
+
+Consequences: the on-stage story is now end-to-end human: login → consent → chat → server log with sub+act. P5's checklist gains the hosts-file line; the capture's login step can be upgraded to kind=consent later without schema change (kind enum already includes it).

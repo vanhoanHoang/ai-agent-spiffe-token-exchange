@@ -105,6 +105,33 @@ services:
       start_period: 20s
     networks: [lab]
 
+  # P2.5: the same agent workload, serving the browser login + chat page.
+  # Same docker label => same SPIFFE ID (it IS spiffe://lab.internal/agent-client);
+  # alice's token lives in the server-side session, the browser gets a cookie.
+  agent-web:
+    profiles: [demo]
+    build: ../agent-client
+    image: spiffe-mcp-lab-agent-client
+    command: ["web"]
+    labels:
+      org.lab.workload: agent-client
+    depends_on:
+      keycloak: { condition: service_healthy }
+      spire-agent: { condition: service_healthy }
+      mcp-server: { condition: service_healthy }
+      ollama: { condition: service_healthy }
+    environment:
+      SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
+    volumes:
+      - spire-agent-socket:/tmp/spire-agent/public:ro
+    ports: ["8090:8090"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8090"]
+      interval: 5s
+      retries: 24
+      start_period: 40s
+    networks: [lab]
+
   # ---- profile: pki (M3+) -------------------------------------------------
   ejbca:
     profiles: [pki]

@@ -16,6 +16,13 @@ public final class AgentMain {
         if (args.length >= 1 && "chat".equals(args[0])) {
             System.exit(SpringApplication.exit(SpringApplication.run(AgentApplication.class, args)));
         }
+        if (args.length >= 1 && "web".equals(args[0])) {
+            // P2.5: browser login + chat page; stays up serving requests.
+            SpringApplication app = new SpringApplication(AgentApplication.class);
+            app.setAdditionalProfiles("web");
+            app.run(args);
+            return;
+        }
         McpCall.main(args);
     }
 }
