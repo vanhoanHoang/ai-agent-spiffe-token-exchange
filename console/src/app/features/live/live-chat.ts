@@ -73,11 +73,6 @@ export class LiveChat {
     this.inspect.emit(stageId);
   }
 
-  protected async logout(): Promise<void> {
-    await this.live.logout();
-    window.location.assign('/');
-  }
-
   protected send(box: HTMLInputElement): void {
     const message = box.value.trim();
     if (message === '' || this.pending()) {

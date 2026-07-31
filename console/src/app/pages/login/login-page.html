@@ -1,0 +1,35 @@
+<div class="wrap">
+  <div class="card">
+    <p class="kicker">SPIFFE × OIDC × MCP</p>
+    <h1>Two identities, one call</h1>
+    <p class="lede">
+      An AI agent calls an MCP server with a token that proves which human it
+      acts for and which workload it is. Sign in to run the chain live.
+    </p>
+
+    @if (session.state() === 'offline') {
+      <p class="offline">
+        This copy is served without the agent, so live sign-in is unavailable.
+      </p>
+      <button type="button" class="btn alt" (click)="browse()">Browse the recorded evidence</button>
+    } @else {
+      <div class="choices">
+        <a class="btn" href="/oauth2/authorization/keycloak">
+          <span class="btn-title">Sign in</span>
+          <span class="btn-sub">standard scopes — the audit tool will be refused</span>
+        </a>
+        <a class="btn human" href="/oauth2/authorization/keycloak-audit">
+          <span class="btn-title">Sign in with audit scope</span>
+          <span class="btn-sub">adds mcp:audit — what you consent to decides what the agent may do</span>
+        </a>
+      </div>
+      <button type="button" class="browse" (click)="browse()">
+        or browse the recorded evidence without signing in
+      </button>
+    }
+
+    <p class="foot">
+      trust domain <code>spiffe://lab.internal</code> · no client secret exists anywhere
+    </p>
+  </div>
+</div>

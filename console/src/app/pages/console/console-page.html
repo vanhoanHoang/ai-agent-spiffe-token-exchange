@@ -1,0 +1,109 @@
+@if (error(); as err) {
+  <div class="error-state" role="alert">
+    <h2>Cannot render this capture</h2>
+    <p>{{ err }}</p>
+    <p class="error-hint">
+      The console renders only a well-formed, redacted DEMO_RUN capture.
+      It refuses to show a partial or tampered run.
+    </p>
+  </div>
+} @else if (run(); as r) {
+  <dc-run-header [run]="r" />
+
+  <main>
+    @if (liveUser(); as u) {
+      <section>
+        <div class="section-head">
+          <h2>Live agent</h2>
+          <span class="rule"></span>
+        </div>
+        <dc-live-chat [user]="u" (inspect)="inspect($event)" />
+      </section>
+    } @else if (session.state() === 'anonymous') {
+      <section class="guest-note">
+        <p>
+          You are browsing the recorded evidence.
+          <a routerLink="/login">Sign in</a> to run the live agent.
+        </p>
+      </section>
+    }
+
+    <section>
+      <div class="section-head">
+        <h2>Architecture</h2>
+        <span class="rule"></span>
+        <button type="button" class="play" (click)="togglePlay()">
+          {{ playing() ? '■ stop' : '▶ play the flow' }}
+        </button>
+      </div>
+      <dc-flow-diagram [stage]="stageId()" />
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Request flow</h2>
+        <span class="rule"></span>
+      </div>
+      <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
+    </section>
+
+    <section class="stage" #stagePanel [attr.data-role]="stage().role">
+      <div class="stage-head">
+        <span class="stage-tag">{{ stage().kindLabel }}</span>
+        <h3>{{ stage().title }}</h3>
+      </div>
+      <p class="narration">{{ stage().narration }}</p>
+      <p class="proves"><em>Proves:</em> {{ stage().proves }}</p>
+
+      <div class="artifacts">
+        @switch (stage().id) {
+          @case ('login') {
+            @if (subjectToken(); as t) {
+              <dc-token-card [token]="t" role="human" kicker="Access token · human only" title="Alice's login token" />
+            }
+          }
+          @case ('svid') {
+            @if (liveSvid(); as s) {
+              <dc-cert-panel [svid]="s" (reload)="loadSvid()" />
+            }
+            <dc-custody-panel [hops]="hops()" [custody]="r.chain_of_custody" />
+          }
+          @case ('exchange') {
+            @if (exchangedToken(); as t) {
+              <dc-token-card [token]="t" role="bridge" kicker="Exchanged token · both identities" title="Delegation token" />
+            }
+          }
+          @case ('call') {
+            <dc-call-checks-panel [checks]="checks()" [logLines]="callLog()" />
+          }
+          @case ('chat') {
+            <dc-chat-panel [steps]="chatSteps()" />
+          }
+        }
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head tabs" role="tablist">
+        <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'rejections'"
+          [class.on]="tab() === 'rejections'" (click)="tab.set('rejections')">Rejections</button>
+        <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'log'"
+          [class.on]="tab() === 'log'" (click)="tab.set('log')">MCP server log</button>
+        <span class="rule"></span>
+        @if (tab() === 'log') {
+          <span class="kicker muted">{{ r.captured_at }}</span>
+        }
+      </div>
+      @switch (tab()) {
+        @case ('rejections') {
+          <dc-rejection-grid [cards]="rejections()" />
+        }
+        @case ('log') {
+          <dc-log-panel [lines]="r.log_tail" />
+        }
+      }
+    </section>
+  </main>
+} @else {
+  <p class="loading">Loading capture…</p>
+}

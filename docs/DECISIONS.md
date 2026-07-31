@@ -447,3 +447,18 @@ Date: 2026-07-31 · Milestone: demo track · Author: claude-code (user: "shouldn
 Evidence: image built from root context; running agent-web shows a single mount (spire socket) and serves `<dc-root>` + `/api/svid` from the baked files (transcript); node tag list from hub.docker.com/v2 (22.23.2-alpine).
 
 Consequences: README quickstart is 3 steps; `check-p6`/`check-p25` unchanged (they assert the SERVED surface, agnostic of where it was built); console exit check (`check-console.sh`) still builds on host by design — it is the console's own gate, not the image's. VERSIONS.md row owed: `node:22.23.2-alpine` (build image, agent Dockerfile).
+
+---
+
+## D-025 — P6.7 (user-directed): routed app — /login landing page, guarded console, shell top bar
+
+Date: 2026-07-31 · Milestone: demo track P6.7 · Author: claude-code (user: single page "looks not serious"; wants a separate login page)
+
+1. **Angular Router introduced** (still ONE surface served by agent-web — D-020's law is about surfaces, not client-side routes): `/login` = branded sign-in page (two consent variants, i.e. the P3 scope toggle, plus "browse the recorded evidence" guest path); `/` = the console behind a functional guard (anonymous & not guest → redirected to /login; **offline serving bypasses the guard** so the M11 offline exit still renders the capture with zero login). `SessionService` is the one session truth (state signal + guest flag), loaded once.
+2. **App shell**: ink top bar — brand ("Identity Console"), trust domain, signed-in user + scopes + logout. Session controls moved out of the chat panel into the chrome; `dc-live-chat` no longer knows how to log out.
+3. **Server-side wrinkle found and fixed**: Spring Security's `DefaultLoginPageGeneratingFilter` owns `GET /login` ahead of MVC (the console's /login initially served "Please sign in"). Fix: `oauth2Login.loginPage("/login")` — declaring the SPA page as THE login page disables the generated one; MVC forwards `/login` → `index.html`. check-p6 now asserts /login serves `<dc-root>` and NOT the generated page.
+4. Console suite 40 tests (console-page spec carries the old app tests; new shell + login-page specs). Old `/console` bookmark redirects kept.
+
+Evidence: curl transcript (login route served Spring's page before the fix, `<dc-root>` after); check-p25 + check-p6 runs of record this session.
+
+Consequences: the browser flow is now login page → Keycloak → consent → console, which reads like a product rather than a scrolling demo sheet. The P2.5-era direct links (`/oauth2/authorization/…`) are unchanged — checks and muscle memory keep working. Candidate follow-ups deliberately not done: separate /evidence route, favicon/branding pass, 404 page.

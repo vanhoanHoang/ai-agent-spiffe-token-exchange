@@ -36,7 +36,10 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/chat", "/api/chat/stream").authenticated()
                         .anyRequest().permitAll())
                 .csrf(csrf -> csrf.csrfTokenRequestHandler(plainCsrf))
-                .oauth2Login(login -> login.defaultSuccessUrl("/", true))
+                // P6.7: /login is the SPA's own page — declaring it here turns
+                // off Spring Security's generated "Please sign in" page, which
+                // otherwise owns GET /login ahead of MVC.
+                .oauth2Login(login -> login.loginPage("/login").defaultSuccessUrl("/", true))
                 .logout(logout -> logout.logoutSuccessUrl("/"));
         return http.build();
     }

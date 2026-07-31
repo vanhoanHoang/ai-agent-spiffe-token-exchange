@@ -48,6 +48,13 @@ code=$(curl -s -b "$JAR" -o "$WORK/me401.json" -w '%{http_code}' "$WEB/api/me")
 [ "$code" = 401 ] || fail "/api/me logged out expected 401, got $code"
 echo "OK: console served same-origin; /api/me honest when logged out"
 
+# ---- 1a. P6.7: /login is the SPA's page, not Spring's generated one --------
+curl -s "$WEB/login" | save login-page.html | grep -q '<dc-root>' \
+  || fail "/login does not serve the SPA"
+grep -qi 'Please sign in' "$WORK/login-page.html" \
+  && fail "/login is Spring Security's generated page, not ours" || true
+echo "OK: /login serves the console's own sign-in page"
+
 # ---- 1b. Live X.509-SVID chain view (P6.5): metadata only, never a key -----
 curl -s "$WEB/api/svid" | save svid.json >/dev/null
 grep -q '"spiffeId":"spiffe://lab.internal/agent-client"' "$WORK/svid.json" \

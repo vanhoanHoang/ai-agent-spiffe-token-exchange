@@ -27,6 +27,8 @@ public class ConsoleUiConfig implements WebMvcConfigurer {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/").setViewName("forward:/index.html");
+        // P6.7: client-side routes of the SPA — same document, Angular routes.
+        registry.addViewController("/login").setViewName("forward:/index.html");
         // Old bookmarks from the brief /console/ era.
         registry.addViewController("/console").setViewName("redirect:/");
         registry.addViewController("/console/").setViewName("redirect:/");
