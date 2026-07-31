@@ -39,6 +39,11 @@ public final class McpCall {
                     System.getenv().get("SUBJECT_TOKEN"));
             return;
         }
+        if (args.length >= 3 && "mcp".equals(args[0])) {
+            // M10 P1: raw MCP protocol probe — mcp <endpoint> <method> [tool]
+            McpProbe.run(args[1], args[2], args.length > 3 ? args[3] : null);
+            return;
+        }
         if (args.length >= 1 && "svid".equals(args[0])) {
             // M9 rejection fixture: print this workload's raw JWT-SVID for the
             // given audience — presented as a bearer it MUST be rejected.

@@ -235,3 +235,18 @@ Verified APIs (file:line from tag sources):
 4. Starters exist at 2.0.0: `spring-ai-starter-model-ollama`, `spring-ai-starter-mcp-client`, `spring-ai-starter-mcp-server-webmvc` (server side runs as normal servlet routes → our security filters apply).
 
 Consequences: BUILD-PLAN M10's stale references to D-007/D-008 corrected to this entry. P1 may begin. VERSIONS.md rows added in this commit.
+
+---
+
+## D-011 — M10 P1: MCP protocol surface; scope gate; SIGPIPE bug in setup guards
+
+Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
+
+1. **mcp-server now speaks MCP** (Spring AI `spring-ai-starter-mcp-server-webmvc` 2.0.0, streamable HTTP at `/mcp` — defaults verified in `McpServerStreamableHttpProperties:36`, `McpServerProperties:100`). Tools are `@McpTool`-annotated beans (`org.springframework.ai.mcp.annotation.McpTool`), auto-discovered by `McpServerSpecificationFactoryAutoConfiguration`. **Every existing gate applies unchanged** to `/mcp` — audience, SVID mTLS, allowlist, act↔peer — because it is an ordinary servlet route.
+2. **Tools**: `whoami` (returns both identities), `lab_status` (what this server enforces), `read_audit_log` (**scope-gated on `mcp:audit`** — the P3 fixture; refusal is `InsufficientScopeException`, surfaced to the agent as a tool error). `AuditLogBuffer` records identities and verdicts only — never tokens.
+3. **`mcp:audit` is an OPTIONAL Keycloak client scope**, deliberately not default: alice's demo token does not carry it, so the refusal is real rather than staged.
+4. **Bug found and fixed (was corrupting idempotency): `K get … | grep -q` under `set -o pipefail`.** `grep -q` exits on first match → SIGPIPE to the upstream `docker exec` → non-zero pipeline → an *existing* object reads as missing → the script re-creates it and dies ("Protocol mapper exists with same name"). Timing-dependent, hence intermittent. All such guards in `setup-realm.sh` / `setup-spiffe-idp.sh` now capture output first, then match (`has()` helper). Verified: three consecutive runs clean.
+
+Evidence: `scripts/check-p1.sh` green — initialize / tools/list / tools/call over SVID mTLS, scope-gated tool refused, server logged `sub`+`act`, and `./infra/acceptance.sh` still exits 0 untouched.
+
+Consequences: P2 (agentic loop) may begin; the protocol layer it needs is proven. The `has()` pattern is the house style for kcadm existence checks from now on.

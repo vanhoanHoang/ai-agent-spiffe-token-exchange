@@ -4,6 +4,11 @@ server:
     bundle: spiffe        # registered by SpiffeSslBundleConfig (D-006)
     client-auth: need     # mTLS: no client SVID -> handshake rejected
 
+spring.ai.mcp.server:
+  name: spiffe-mcp-lab
+  version: 0.1.0
+  protocol: STREAMABLE    # default; endpoint /mcp (verified in D-010)
+
 spring:
   security:
     oauth2:

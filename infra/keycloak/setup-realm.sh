@@ -14,13 +14,25 @@ cd "$(dirname "$0")/.."
 K() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
 say() { echo "== $*"; }
 
+# SIGPIPE-safe existence test: `K get ... | grep -q` makes grep exit on first
+# match, SIGPIPEs the docker exec upstream, and under `set -o pipefail` the
+# pipeline reports failure — so an existing object reads as missing and the
+# script tries to re-create it. Capture first, match second.
+has() { # has <pattern> <kcadm args...>
+  local pattern="$1"; shift
+  local out
+  out=$(K "$@" 2>/dev/null) || return 1
+  printf '%s' "$out" | grep -q -- "$pattern"
+}
+
+
 K config credentials --server http://localhost:8080 --realm master --user admin --password admin
 
 if K get realms/lab --fields realm >/dev/null 2>&1; then say "realm lab exists"; else
   say "creating realm lab"; K create realms -s realm=lab -s enabled=true
 fi
 
-if K get users -r lab -q username=alice --fields username 2>/dev/null | grep -q alice; then
+if has alice get users -r lab -q username=alice --fields username; then
   say "user alice exists"
 else
   say "creating user alice"
@@ -45,7 +57,7 @@ fi
 
 client_id() { K get clients -r lab -q clientId="$1" --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/'; }
 
-if K get clients -r lab -q clientId=test-caller --fields clientId 2>/dev/null | grep -q test-caller; then
+if has test-caller get clients -r lab -q clientId=test-caller --fields clientId; then
   say "client test-caller exists"
 else
   say "creating client test-caller"
@@ -56,7 +68,7 @@ CID=$(client_id test-caller)
 K update "clients/$CID/default-client-scopes/$SCOPE_ID" -r lab
 say "test-caller default scope mcp-audience attached"
 
-if K get clients -r lab -q clientId=wrong-aud-client --fields clientId 2>/dev/null | grep -q wrong-aud-client; then
+if has wrong-aud-client get clients -r lab -q clientId=wrong-aud-client --fields clientId; then
   say "client wrong-aud-client exists"
 else
   say "creating client wrong-aud-client (no mcp audience — anti-passthrough source)"

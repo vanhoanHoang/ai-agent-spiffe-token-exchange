@@ -37,9 +37,12 @@ public class SpiffeAllowlistFilter extends OncePerRequestFilter {
     private static final String PEER_CERTS_ATTR = "jakarta.servlet.request.X509Certificate";
 
     private final Set<String> allowlist;
+    private final AuditLogBuffer auditLog;
 
-    public SpiffeAllowlistFilter(@Value("${mcp.allowed-spiffe-ids}") String allowedSpiffeIds) {
+    public SpiffeAllowlistFilter(@Value("${mcp.allowed-spiffe-ids}") String allowedSpiffeIds,
+            AuditLogBuffer auditLog) {
         this.allowlist = Set.copyOf(List.of(allowedSpiffeIds.split("\\s*,\\s*")));
+        this.auditLog = auditLog;
     }
 
     @Override
@@ -71,7 +74,14 @@ public class SpiffeAllowlistFilter extends OncePerRequestFilter {
             return;
         }
         request.setAttribute("mcp.peer.spiffeId", peerSpiffeId);
+        auditLog.record("%s %s allowed sub=%s act=%s peer=%s".formatted(
+                request.getMethod(), request.getRequestURI(), subjectOrAnon(), actSub, peerSpiffeId));
         chain.doFilter(request, response);
+    }
+
+    private String subjectOrAnon() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return (auth instanceof JwtAuthenticationToken jwtAuth) ? jwtAuth.getToken().getSubject() : "anonymous";
     }
 
     private String actorSub() {
