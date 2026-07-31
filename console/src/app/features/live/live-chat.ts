@@ -41,7 +41,7 @@ export class LiveChat {
 
   protected async logout(): Promise<void> {
     await this.live.logout();
-    window.location.assign('/console/');
+    window.location.assign('/');
   }
 
   protected send(box: HTMLInputElement): void {

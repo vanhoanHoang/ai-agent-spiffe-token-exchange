@@ -42,8 +42,8 @@ form_action() {
 }
 
 # ---- 1. Unauthenticated: console served, /api/me honest --------------------
-curl -s -c "$JAR" "$WEB/console/" | save console.html | grep -q '<dc-root>' \
-  || fail "GET /console/ does not serve the built console"
+ curl -s -c "$JAR" "$WEB/" | save console.html | grep -q '<dc-root>' \
+  || fail "root does not serve the built console"
 code=$(curl -s -b "$JAR" -o "$WORK/me401.json" -w '%{http_code}' "$WEB/api/me")
 [ "$code" = 401 ] || fail "/api/me logged out expected 401, got $code"
 echo "OK: console served same-origin; /api/me honest when logged out"
@@ -70,8 +70,8 @@ fi
 
 # Login must END on the console — the live panel is the point (user-reported).
 FINAL=$(curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" -o /dev/null -w '%{url_effective}' "$WEB/oauth2/authorization/keycloak")
-echo "$FINAL" | grep -q "/console" || fail "login does not land on the console: $FINAL"
-echo "OK: login flow returns to /console/"
+[ "$FINAL" = "$WEB/" ] || fail "login does not land on the console root: $FINAL"
+echo "OK: login flow returns to the console root"
 
 ME=$(curl -s -b "$JAR" "$WEB/api/me")
 echo "$ME" | save me.json | grep -q '"username":"alice"' || fail "/api/me after login: $ME"

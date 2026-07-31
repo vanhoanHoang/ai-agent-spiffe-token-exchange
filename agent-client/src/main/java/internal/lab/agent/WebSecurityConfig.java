@@ -8,10 +8,12 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 /**
- * P2.5/P6: the front page and the console shell are public (they offer the
- * login); chatting requires alice's browser session. oauth2Login handles the
- * code + PKCE flow; alice's tokens live in the server-side session — the
- * browser only ever holds the session cookie (check-p25/check-p6 prove it).
+ * P6.3: ONE interface — the console at the root. The shell and /api/me are
+ * public (the console renders logged-out and offers the login); chatting is
+ * authenticated. Every login ENDS at the console root, no matter what request
+ * Spring saved along the way (alwaysUse — the saved-request default burned us
+ * twice). alice's tokens live in the server-side session; the browser holds a
+ * cookie (check-p25/check-p6 prove it).
  *
  * CSRF uses the plain request-attribute handler: the console reads the raw
  * token from /api/me and echoes it in X-CSRF-TOKEN (the XOR handler would
@@ -26,13 +28,11 @@ public class WebSecurityConfig {
         CsrfTokenRequestAttributeHandler plainCsrf = new CsrfTokenRequestAttributeHandler();
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/error", "/console/**", "/api/me").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/chat", "/api/chat/stream").authenticated()
+                        .anyRequest().permitAll())
                 .csrf(csrf -> csrf.csrfTokenRequestHandler(plainCsrf))
-                // Login initiated from the console must RETURN to the console —
-                // the live panel is the demo surface (P6.2, user-reported).
-                .oauth2Login(login -> login.defaultSuccessUrl("/console/"))
-                .logout(logout -> logout.logoutSuccessUrl("/console/"));
+                .oauth2Login(login -> login.defaultSuccessUrl("/", true))
+                .logout(logout -> logout.logoutSuccessUrl("/"));
         return http.build();
     }
 }

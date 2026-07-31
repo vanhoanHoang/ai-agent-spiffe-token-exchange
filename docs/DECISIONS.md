@@ -373,3 +373,16 @@ Date: 2026-07-31 · Milestone: demo track P6.2 · Author: claude-code
 Evidence: `scripts/check-p6.sh` green end-to-end (including the new console-return assertion); console suite 25 tests green.
 
 Consequences: the console is now the single demo surface — diagram + live chat + recorded anatomy on one page. Full check runtime grew past 10 minutes (two model inferences + nested offline check, uncached builds); acceptable for an exit criterion, not for a smoke test — `demo/checklist.sh` remains the fast pre-flight.
+
+---
+
+## D-020 — P6.3 (user-directed, emphatic): ONE interface — the console at /; the plain page deleted
+
+Date: 2026-07-31 · Milestone: demo track P6.3 · Author: claude-code
+
+1. **The console is the only surface.** `ChatPageController` (the P2.5 server-rendered page) is deleted; the built Angular console is served at the ROOT (`/**` resource fallback + `/` → index.html; `/console` redirects home for old bookmarks). Controllers keep precedence for `/api/**`, `/oauth2/**`, `/login/**`, `/logout`, `/error`.
+2. **Login lands on the console, unconditionally**: `defaultSuccessUrl("/", true)` — alwaysUse. Root cause of the twice-reported bug: a saved request in the session outranks a plain defaultSuccessUrl, and curl-based verification (clean jar, no saved request) could not reproduce what a real browser session hit. Lesson recorded: verify redirect behavior with poisoned session state, not only clean state.
+3. **check-p25.sh re-targeted** at the real surface, all its essence preserved and re-proven green: forced-fresh consent, login ends at `/` (asserted on url_effective), chat POST → server log `sub=alice` + `act.sub=agent`, no token-shaped string browser-visible, acceptance untouched/green. Security config now: only `/api/chat` + `/api/chat/stream` require auth; everything else (console shell, assets, `/api/me`) is public and honest.
+4. check-p6.sh updated for root serving (console at `/`, login-landing equality assert). Its full ~10-min run was NOT re-executed after this refactor (P25 covers the changed paths; the stream endpoint is untouched) — **next session should run `bash scripts/check-p6.sh` once for the record.**
+
+Consequences: http://localhost:8090 is the demo, full stop. Handoff state: all demo-track checks (m0–m7, p1, p2, p25, p3, p6, console, acceptance) green as of their last runs this session; stack up with demo profile; hosts-file line present on this host.

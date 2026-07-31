@@ -7,10 +7,10 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * P6: agent-web serves the BUILT Angular console at /console/ (mounted from
- * console/dist via compose — no node in the Java image). Same origin, so the
- * session cookie and CSRF just work; the console's offline capture mode is
- * untouched (it still ships demo-run.json inside the bundle).
+ * P6.3: ONE interface. The built Angular console (mounted from console/dist
+ * via compose — no node in the Java image) is served at the ROOT; controllers
+ * (/api/**, /oauth2/**, /login/**, /logout, /error) take precedence, the
+ * bundle's files are the fallback for everything else.
  */
 @Configuration
 @Profile("web")
@@ -20,13 +20,15 @@ public class ConsoleUiConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/console/**")
+        registry.addResourceHandler("/**")
                 .addResourceLocations("file:" + uiDir + "/");
     }
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/console").setViewName("forward:/console/index.html");
-        registry.addViewController("/console/").setViewName("forward:/console/index.html");
+        registry.addViewController("/").setViewName("forward:/index.html");
+        // Old bookmarks from the brief /console/ era.
+        registry.addViewController("/console").setViewName("redirect:/");
+        registry.addViewController("/console/").setViewName("redirect:/");
     }
 }
