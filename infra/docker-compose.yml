@@ -129,6 +129,9 @@ services:
       SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
     volumes:
       - spire-agent-socket:/tmp/spire-agent/public:ro
+      # P6: the built Angular console, served at /console/ (build on host:
+      # `npm run build` in console/ — no node inside the Java image)
+      - ../console/dist/console/browser:/app/console-ui:ro
     ports: ["8090:8090"]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8090"]

@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
 import { DemoRun, DemoStep, parseDemoRun } from './core/demo-run';
+import { LiveClient, LiveState, LiveUser } from './core/live';
 import {
   callChecks,
   custodyHops,
@@ -13,6 +14,7 @@ import { CallChecksPanel } from './features/call/call-checks-panel';
 import { ChatPanel } from './features/chat/chat-panel';
 import { CustodyPanel } from './features/custody/custody-panel';
 import { RunHeader } from './features/header/run-header';
+import { LiveChat } from './features/live/live-chat';
 import { LogPanel } from './features/log/log-panel';
 import { RejectionGrid } from './features/rejections/rejection-grid';
 import { StepRail } from './features/steps/step-rail';
@@ -30,14 +32,22 @@ import { TokenCard } from './shared/ui/token-card';
     ChatPanel,
     RejectionGrid,
     LogPanel,
+    LiveChat,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
+  private readonly liveClient = inject(LiveClient);
+
   protected readonly run = signal<DemoRun | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly stageId = signal<string>('login');
+  protected readonly liveState = signal<LiveState>('offline');
+  protected readonly liveUser = computed<LiveUser | null>(() => {
+    const s = this.liveState();
+    return typeof s === 'object' ? s : null;
+  });
 
   protected readonly stages = STAGES;
   protected readonly stage = computed(
@@ -72,6 +82,7 @@ export class App {
 
   constructor() {
     void this.load();
+    void this.liveClient.me().then((s) => this.liveState.set(s));
   }
 
   protected select(id: string): void {

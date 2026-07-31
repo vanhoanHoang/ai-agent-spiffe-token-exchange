@@ -1,0 +1,45 @@
+<div class="panel" [attr.data-phase]="phase()">
+  <div class="bar">
+    <span>Live · acting for {{ user().username }}</span>
+    <span class="scopes">
+      consented: {{ user().scopes.join(' ') }}
+      @if (!hasAudit()) {
+        <em> — no mcp:audit: the audit tool will be refused</em>
+      }
+    </span>
+  </div>
+
+  <div class="flow" aria-label="what happens to this message, in order">
+    <span class="hop human done">01 login ✓</span>
+    <span class="arrow"></span>
+    <span class="hop workload done">02 SVID ✓</span>
+    <span class="arrow"></span>
+    <span class="hop bridge" [class.active]="phase() === 'flight'">03 exchange · act.sub</span>
+    <span class="arrow"></span>
+    <span class="hop ink" [class.active]="phase() === 'flight'" [class.failed]="phase() === 'error'">04 mTLS call</span>
+    <span class="arrow"></span>
+    <span class="hop ink" [class.done]="phase() === 'done'">05 answer</span>
+  </div>
+
+  <div class="content">
+    @for (t of turns(); track $index) {
+      <div class="turn">
+        <div class="q">{{ t.q }}</div>
+        <div class="a" [class.err]="t.error">{{ t.a }}</div>
+      </div>
+    }
+    @if (pending()) {
+      <div class="thinking">the model is thinking — the exchange and the mTLS call happen underneath…</div>
+    }
+    <div class="composer">
+      <input #box class="box" placeholder="Ask the agent (try: read the audit log)"
+        [disabled]="pending()" (keydown.enter)="send(box)" />
+      <button type="button" class="go" [disabled]="pending()" (click)="send(box)">Send</button>
+    </div>
+    <p class="footnote">
+      Every message runs the full chain live: session token → RFC 8693 exchange →
+      mTLS MCP call. The proof is the server log line with <code>sub</code> and
+      <code>act.sub</code> — the recorded panels below explain each hop.
+    </p>
+  </div>
+</div>

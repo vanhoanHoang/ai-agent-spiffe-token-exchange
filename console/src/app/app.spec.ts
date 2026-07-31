@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { App } from './app';
+import { LiveClient, LiveState } from './core/live';
 import { demoRunFixture } from './core/testing/fixture';
 
 function mockFetch(body: unknown, ok = true): void {
@@ -15,14 +16,27 @@ function mockFetch(body: unknown, ok = true): void {
   );
 }
 
+async function renderApp(live: LiveState = 'offline') {
+  await TestBed.configureTestingModule({
+    imports: [App],
+    providers: [
+      {
+        provide: LiveClient,
+        useValue: { me: () => Promise.resolve(live), chat: () => Promise.resolve({}) },
+      },
+    ],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(App);
+  await fixture.whenStable();
+  return fixture;
+}
+
 describe('App', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('renders the full run from a valid capture', async () => {
     mockFetch(demoRunFixture());
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    const fixture = await renderApp();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain('Two identities, one call');
     expect(el.textContent).toContain('spiffe://lab.internal');
@@ -33,16 +47,13 @@ describe('App', () => {
 
   it('shows the login token card first, then the exchange card when selected', async () => {
     mockFetch(demoRunFixture());
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    const fixture = await renderApp();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('dc-token-card')?.textContent).toContain("Alice's login token");
 
-    const exchangeBtn = Array.from(el.querySelectorAll<HTMLButtonElement>('.step')).find((b) =>
-      b.textContent?.includes('Token exchange'),
-    );
-    exchangeBtn?.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.step'))
+      .find((b) => b.textContent?.includes('Token exchange'))
+      ?.click();
     await fixture.whenStable();
     expect(el.querySelector('dc-token-card')?.textContent).toContain('Delegation token');
     expect(el.querySelector('dc-token-card')?.textContent).toContain('act.sub');
@@ -50,9 +61,7 @@ describe('App', () => {
 
   it('renders the refusal (deny) message in the chat stage', async () => {
     mockFetch(demoRunFixture());
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    const fixture = await renderApp();
     const el = fixture.nativeElement as HTMLElement;
     Array.from(el.querySelectorAll<HTMLButtonElement>('.step'))
       .find((b) => b.textContent?.includes('end-to-end'))
@@ -64,9 +73,7 @@ describe('App', () => {
 
   it('renders the error state — never a partial run — for a malformed capture', async () => {
     mockFetch({ version: 1 });
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    const fixture = await renderApp();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.error-state')).toBeTruthy();
     expect(el.querySelector('dc-run-header')).toBeFalsy();
@@ -74,9 +81,32 @@ describe('App', () => {
 
   it('renders the error state when the capture is missing', async () => {
     mockFetch(null, false);
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    const fixture = await renderApp();
     expect((fixture.nativeElement as HTMLElement).querySelector('.error-state')).toBeTruthy();
+  });
+
+  it('offline: no live panel and no login banner', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp('offline');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('dc-live-chat')).toBeFalsy();
+    expect(el.querySelector('.login-banner')).toBeFalsy();
+  });
+
+  it('anonymous (served by the agent, logged out): shows the login banner', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp('anonymous');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.login-banner')).toBeTruthy();
+    expect(el.querySelector('a[href="/oauth2/authorization/keycloak"]')).toBeTruthy();
+    expect(el.querySelector('dc-live-chat')).toBeFalsy();
+  });
+
+  it('logged in: shows the live chat panel', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp({ username: 'alice', scopes: ['openid', 'profile'] });
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('dc-live-chat')?.textContent).toContain('alice');
+    expect(el.querySelector('.login-banner')).toBeFalsy();
   });
 });

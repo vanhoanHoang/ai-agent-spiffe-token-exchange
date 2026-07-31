@@ -329,3 +329,18 @@ Date: 2026-07-31 · Milestone: demo track P5 · Author: claude-code
 4. Session-scope note: P2→P5 were executed in one overnight run under an explicit user directive ("build everything left while I'm sleeping"), overriding the one-milestone-per-session default; each phase kept its own exit check and commit.
 
 Consequences: demo track complete — M10 exits #1/#2/#3 and M11 exit all green (D-012..D-015); `./infra/acceptance.sh` exits 0 untouched throughout. Remaining human items: hosts-file line for the live browser demo, and one cold-start rehearsal.
+
+---
+
+## D-017 — P6 (user-directed): live chat inside the console; the no-stack-calls rule amended for the agent's own API
+
+Date: 2026-07-31 · Milestone: demo track P6 · Author: claude-code (user chose "live chat in console" over playback-only)
+
+Proven by `scripts/check-p6.sh` (green):
+1. **agent-web serves the built console** at `/console/` (compose mounts `console/dist/console/browser` read-only; built on host — no node in the Java image; `<base href="./">` makes the bundle subpath-agnostic). Same origin, so alice's session cookie and CSRF work unchanged.
+2. **JSON surface**: `GET /api/me` (public; 401-shaped when logged out; returns username, consented scopes, and the CSRF token the console echoes in `X-CSRF-TOKEN`) and `POST /api/chat` (authenticated; per message runs the D-012 chain: session token → RFC 8693 exchange → mTLS MCP call). Responses carry answers and identity labels — never a token (the check greps every browser-visible body for JWT shapes).
+3. **CSRF switched to the plain `CsrfTokenRequestAttributeHandler`** for the web profile: the console reads the raw token from /api/me; the default XOR handler rejects raw tokens, and BREACH masking protects nothing in this lab.
+4. **The console's rule amendment is scoped and self-degrading**: live mode exists only when `/api/me` answers; on 401 the console shows the two login links (plain / with `mcp:audit` — the consent toggle); anywhere else (file://, ng serve, static host) it falls back to the recorded capture. `check-console.sh` (offline M11 exit) and `check-p25.sh` surfaces remain green; `CONVENTIONS-ANGULAR.md` amended in this commit.
+5. **The animated flow is labeled illustration, honest about what is real**: hop chips animate in order while a message is in flight; verdicts (answer/refusal) and the log lines are the captured/live facts. The model's per-hop timing is not instrumented — the proof remains the server log line.
+
+Consequences: the on-stage surface is now ONE page — http://localhost:8090/console/ — with live chat on top and the recorded anatomy below it. The plain chat page at `/` remains for P2.5's check. Console rebuilds: `npm run build` in `console/`, no container restart needed (volume mount).

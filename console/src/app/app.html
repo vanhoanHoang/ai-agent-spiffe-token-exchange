@@ -18,6 +18,29 @@
   </div>
 
   <main>
+    @if (liveUser(); as u) {
+      <section>
+        <div class="section-head">
+          <h2>Live agent</h2>
+          <span class="rule"></span>
+          <span class="kicker ok">same chain, running now</span>
+        </div>
+        <dc-live-chat [user]="u" />
+      </section>
+    } @else if (liveState() === 'anonymous') {
+      <section class="login-banner">
+        <h2>Run it live</h2>
+        <p>
+          The agent is serving this console. Log in, consent, and chat — every
+          message runs the login → SVID → exchange → mTLS chain for real.
+        </p>
+        <p>
+          <a class="login-btn" href="/oauth2/authorization/keycloak">Log in</a>
+          <a class="login-btn alt" href="/oauth2/authorization/keycloak-audit">Log in granting audit scope</a>
+        </p>
+      </section>
+    }
+
     <section>
       <div class="section-head">
         <h2>The happy path</h2>

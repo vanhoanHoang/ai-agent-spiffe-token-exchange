@@ -25,7 +25,7 @@ Read before writing any frontend code, together with `console/CLAUDE.md`. Same s
 
 ## The one data rule
 
-The console has exactly **one input**: the captured `DEMO_RUN` JSON (schema owned by P4, emitted by the demo runs). Its TypeScript model lives in `core/` and is the single source of type truth — panels consume the model, never raw JSON. Parsing is fail-closed: a malformed capture renders an error state, never a half-lie of a demo run. No HTTP calls to Keycloak, the MCP server, or SPIRE — a "live" log tail is still fed from captured/streamed JSON files, not from the stack's APIs.
+The console has exactly **one input**: the captured `DEMO_RUN` JSON (schema owned by P4, emitted by the demo runs). Its TypeScript model lives in `core/` and is the single source of type truth — panels consume the model, never raw JSON. Parsing is fail-closed: a malformed capture renders an error state, never a half-lie of a demo run. No HTTP calls to Keycloak, the MCP server, or SPIRE — with **one amendment (D-017)**: when served by agent-web (same origin), the console may call **the agent's own `/api/me` and `/api/chat`** — the same session-cookie surface the browser already had. Those endpoints return answers and identity labels, never tokens; anywhere else the console is served, it must degrade to the offline capture (that fallback is part of the M11 exit and stays tested).
 
 ## Security posture (inherited from the stack)
 
