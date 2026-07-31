@@ -97,8 +97,9 @@ infra/                # SPIRE, EJBCA, compose          [C — human-led critical
 mcp-server/           # Spring Boot resource server     [A]
 keycloak-spiffe-spi/  # ClientAuthenticator provider    [B]
 agent-client/         # SVID → token exchange → MCP call
+console/              # M11 demo console (Angular)  [demo track]
 specs/                # Pinned truth. Read-only.
 docs/                 # ARCHITECTURE, SPEC-REGISTRY, BUILD-PLAN, CONVENTIONS, DECISIONS
 ```
 
-Read `docs/ARCHITECTURE.md` for topology and the three-trust-store table before touching any TLS or validation code. Read `docs/CONVENTIONS.md` before writing Java.
+Read `docs/ARCHITECTURE.md` for topology and the three-trust-store table before touching any TLS or validation code. Read `docs/CONVENTIONS.md` before writing Java. Read `console/CLAUDE.md` + `docs/CONVENTIONS-ANGULAR.md` before touching `console/` — those conventions are enforced (lint limits fail the console's exit check), not advisory.
