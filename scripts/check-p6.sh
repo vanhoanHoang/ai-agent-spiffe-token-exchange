@@ -48,6 +48,16 @@ code=$(curl -s -b "$JAR" -o "$WORK/me401.json" -w '%{http_code}' "$WEB/api/me")
 [ "$code" = 401 ] || fail "/api/me logged out expected 401, got $code"
 echo "OK: console served same-origin; /api/me honest when logged out"
 
+# ---- 1b. Live X.509-SVID chain view (P6.5): metadata only, never a key -----
+curl -s "$WEB/api/svid" | save svid.json >/dev/null
+grep -q '"spiffeId":"spiffe://lab.internal/agent-client"' "$WORK/svid.json" \
+  || fail "/api/svid does not name the agent's SPIFFE ID"
+grep -q '"role":"leaf"' "$WORK/svid.json" && grep -q '"serial"' "$WORK/svid.json" \
+  || fail "/api/svid missing leaf/serial metadata"
+grep -qi 'PRIVATE KEY\|BEGIN CERTIFICATE' "$WORK/svid.json" \
+  && fail "/api/svid leaks key/PEM material" || true
+echo "OK: /api/svid serves the live chain metadata (no key, no PEM)"
+
 # ---- 2. Scripted login (authorization code + PKCE + consent) ---------------
 curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "$WEB/oauth2/authorization/keycloak" | save login.html >/dev/null
 ACTION=$(form_action "$WORK/login.html")

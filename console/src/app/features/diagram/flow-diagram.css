@@ -116,8 +116,8 @@ svg {
 }
 
 .node .kicker {
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
 }
 
 .node.human .kicker {
@@ -135,12 +135,6 @@ svg {
 .node .name {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 24px;
+  font-size: 22px;
   fill: var(--text-primary);
-}
-
-.node .mono {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  fill: var(--text-tertiary);
 }

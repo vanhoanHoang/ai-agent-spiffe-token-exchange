@@ -1,0 +1,27 @@
+<div class="panel">
+  <div class="bar">
+    <span>X.509-SVID · live certificate chain</span>
+    <button type="button" class="reload" (click)="reload.emit()">↻ refresh</button>
+  </div>
+  <div class="content">
+    <p class="id">{{ svid().spiffeId }}</p>
+    @for (c of svid().chain; track c.sha256) {
+      <div class="cert">
+        <span class="dot"></span>
+        <div class="role">{{ c.role }}</div>
+        <div class="name">{{ cn(c.subject) }}</div>
+        @for (uri of c.uriSans; track uri) {
+          <div class="detail">URI SAN: {{ uri }}</div>
+        }
+        <div class="detail">serial {{ c.serial }}</div>
+        <div class="detail">valid {{ c.notBefore }} → {{ c.notAfter }}</div>
+        <div class="detail" [title]="c.sha256">sha256 {{ short(c.sha256) }}</div>
+        <div class="detail muted">issued by {{ cn(c.issuer) }}</div>
+      </div>
+    }
+    <p class="footnote">
+      Fetched live from the agent's Workload API. Refresh after a rotation:
+      the leaf serial and validity window change, the SPIFFE ID does not.
+    </p>
+  </div>
+</div>

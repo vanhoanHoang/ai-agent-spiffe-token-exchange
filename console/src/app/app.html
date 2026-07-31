@@ -68,6 +68,9 @@
             }
           }
           @case ('svid') {
+            @if (liveSvid(); as s) {
+              <dc-cert-panel [svid]="s" (reload)="loadSvid()" />
+            }
             <dc-custody-panel [hops]="hops()" [custody]="r.chain_of_custody" />
           }
           @case ('exchange') {

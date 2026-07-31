@@ -402,3 +402,18 @@ Date: 2026-07-31 · Milestone: demo track P6.4 · Author: claude-code
 Evidence: check-p6 PASS output in transcript; `scripts/check-console.sh` green post-change (26 tests, lint, offline assertions); served-bundle grep confirms removed strings absent and new UI strings present at http://localhost:8090.
 
 Consequences: console suite is 26 tests. Copy in `core/narrative.ts` is now the audience script — future copy edits stay factual-first per D-015 point 3.
+
+---
+
+## D-022 — P6.5 (user-directed): live X.509-SVID chain view; mid-session token expiry fixed with the refresh grant; diagram + copy polish
+
+Date: 2026-07-31 · Milestone: demo track P6.5 · Author: claude-code
+
+1. **`GET /api/svid`** (agent-web, public per D-020's split): the agent's CURRENT X.509-SVID chain as certificate METADATA only — subject/issuer DN, serial, validity window, URI SANs, SHA-256 fingerprint; never a private key, never PEM. Read live from the `X509Source` (API verified by `javap` against the pinned java-spiffe-core 0.8.17 jar: `getX509Svid().getChain()`, `getBundleForTrustDomain(...).getX509Authorities()`), bundle deduped against the chain by fingerprint. Console: `dc-cert-panel` renders it on stage 02 when live (refresh button re-fetches — rotation is visible: the leaf's serial/validity change, the SPIFFE ID doesn't); offline mode shows only the captured custody panel, M11 exit untouched. check-p6 asserts: SPIFFE ID + leaf metadata present, nothing key/PEM-shaped served.
+2. **User-reported live bug fixed: after ~5 min logged in, every chat failed** `token exchange failed: HTTP 400 invalid_token`. Diagnosis per §8: clock skew ruled out first (≤2s); Keycloak event log showed `reason="subject_token validation failure"` with client auth (jwt-spiffe) still succeeding — alice's ACCESS token had expired in the server-side session while her login session lived on; the P6 controllers used `OAuth2AuthorizedClientService` (login-time token, never refreshed). Fix: `DefaultOAuth2AuthorizedClientManager` with `authorizationCode().refreshToken()` providers; all three endpoints obtain a fresh access token per request (`freshClient`, fail-closed to 401/session_expired when the refresh grant is rejected). Proven by check-p25 green post-fix; the expiry path itself is not check-automated (would need a 5-min wait or a shortened lifetime, and shortening realm token lifetimes for a test is config distortion we decline).
+3. **Stage-card copy rewritten in plain English** (user: "simple english, not AI traced") — all five narration/proves pairs in `core/narrative.ts`; facts unchanged. **Architecture diagram decluttered** (user-reported overlap): node kickers 14→11px, third-line mono labels removed from all six nodes.
+4. Note for the record: the earlier full check-p6 run this session (pre-P6.5 code) was green; this entry's changes re-ran it green again (evidence below).
+
+Evidence: Keycloak `TOKEN_EXCHANGE_ERROR` log lines + clock check in transcript; javap output in transcript; `/api/svid` live response (leaf TTL 1h) in transcript; check-p25 PASS and check-p6 PASS outputs in transcript; console suite 31 tests green.
+
+Consequences: the console can now show the actual rotating certificate on stage — the "auto loaded" story is demonstrable, not narrated. Sessions survive access-token expiry for the length of Keycloak's SSO session (idle 30 min default); past that, the API answers 401 and the console shows the login banner.

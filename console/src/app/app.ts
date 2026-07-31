@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 
 import { DemoRun, DemoStep, parseDemoRun } from './core/demo-run';
-import { LiveClient, LiveState, LiveUser } from './core/live';
+import { LiveClient, LiveState, LiveSvid, LiveUser } from './core/live';
 import {
   callChecks,
   custodyHops,
@@ -19,6 +19,7 @@ import {
   tokenByRef,
 } from './core/narrative';
 import { CallChecksPanel } from './features/call/call-checks-panel';
+import { CertPanel } from './features/certs/cert-panel';
 import { ChatPanel } from './features/chat/chat-panel';
 import { CustodyPanel } from './features/custody/custody-panel';
 import { FlowDiagram } from './features/diagram/flow-diagram';
@@ -36,6 +37,7 @@ import { TokenCard } from './shared/ui/token-card';
     RunHeader,
     StepRail,
     TokenCard,
+    CertPanel,
     CustodyPanel,
     CallChecksPanel,
     ChatPanel,
@@ -54,6 +56,7 @@ export class App {
   protected readonly error = signal<string | null>(null);
   protected readonly stageId = signal<string>('login');
   protected readonly tab = signal<'rejections' | 'log'>('rejections');
+  protected readonly liveSvid = signal<LiveSvid | null>(null);
   protected readonly liveState = signal<LiveState>('offline');
   protected readonly liveUser = computed<LiveUser | null>(() => {
     const s = this.liveState();
@@ -102,6 +105,14 @@ export class App {
   protected select(id: string): void {
     this.stopPlay();
     this.stageId.set(id);
+    if (id === 'svid' && this.liveUser() !== null) {
+      void this.loadSvid();
+    }
+  }
+
+  /** Live only: the agent's current X.509-SVID chain, refetched on demand. */
+  protected async loadSvid(): Promise<void> {
+    this.liveSvid.set(await this.liveClient.svid());
   }
 
   private readonly stagePanel = viewChild<ElementRef<HTMLElement>>('stagePanel');

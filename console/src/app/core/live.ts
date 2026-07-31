@@ -19,6 +19,23 @@ export interface ChatResult {
   readonly error?: string;
 }
 
+/** Public metadata of one certificate in the live X.509-SVID chain. */
+export interface LiveCert {
+  readonly role: string;
+  readonly subject: string;
+  readonly issuer: string;
+  readonly serial: string;
+  readonly notBefore: string;
+  readonly notAfter: string;
+  readonly uriSans: readonly string[];
+  readonly sha256: string;
+}
+
+export interface LiveSvid {
+  readonly spiffeId: string;
+  readonly chain: readonly LiveCert[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class LiveClient {
   private csrf = '';
@@ -54,6 +71,24 @@ export class LiveClient {
       return (await r.json()) as ChatResult;
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  /** The agent's CURRENT X.509-SVID chain — certificate metadata only,
+   *  fetched fresh each call so rotation is visible. Null when not live. */
+  async svid(): Promise<LiveSvid | null> {
+    try {
+      const r = await fetch('/api/svid');
+      if (!r.ok) {
+        return null;
+      }
+      const d = (await r.json()) as { spiffeId?: unknown; chain?: unknown };
+      if (typeof d.spiffeId !== 'string' || !Array.isArray(d.chain)) {
+        return null;
+      }
+      return { spiffeId: d.spiffeId, chain: d.chain as LiveCert[] };
+    } catch {
+      return null;
     }
   }
 

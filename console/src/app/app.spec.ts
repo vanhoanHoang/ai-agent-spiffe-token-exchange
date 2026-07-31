@@ -22,7 +22,26 @@ async function renderApp(live: LiveState = 'offline') {
     providers: [
       {
         provide: LiveClient,
-        useValue: { me: () => Promise.resolve(live), chat: () => Promise.resolve({}) },
+        useValue: {
+          me: () => Promise.resolve(live),
+          chat: () => Promise.resolve({}),
+          svid: () =>
+            Promise.resolve({
+              spiffeId: 'spiffe://lab.internal/agent-client',
+              chain: [
+                {
+                  role: 'leaf',
+                  subject: 'CN=agent-client',
+                  issuer: 'CN=SPIRE Intermediate CA',
+                  serial: 'ab12',
+                  notBefore: '2026-07-31T10:00:00Z',
+                  notAfter: '2026-07-31T11:00:00Z',
+                  uriSans: ['spiffe://lab.internal/agent-client'],
+                  sha256: 'deadbeef'.repeat(8),
+                },
+              ],
+            }),
+        },
       },
     ],
   }).compileComponents();
@@ -122,6 +141,33 @@ describe('App', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('dc-live-chat')?.textContent).toContain('alice');
     expect(el.querySelector('.login-banner')).toBeFalsy();
+  });
+
+  it('live: opening the SVID stage shows the current certificate chain', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp({ username: 'alice', scopes: ['openid'] });
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('dc-cert-panel')).toBeFalsy();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.step'))
+      .find((b) => b.textContent?.includes('Agent fetches SVIDs'))
+      ?.click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(el.querySelector('dc-cert-panel')?.textContent).toContain('serial ab12');
+    expect(el.querySelector('dc-custody-panel')).toBeTruthy();
+  });
+
+  it('offline: the SVID stage shows only the captured custody panel', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp('offline');
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.step'))
+      .find((b) => b.textContent?.includes('Agent fetches SVIDs'))
+      ?.click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(el.querySelector('dc-cert-panel')).toBeFalsy();
+    expect(el.querySelector('dc-custody-panel')).toBeTruthy();
   });
 
   it('clicking a live hop opens the matching stage detail', async () => {

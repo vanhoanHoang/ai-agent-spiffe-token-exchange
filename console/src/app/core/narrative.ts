@@ -38,32 +38,32 @@ export const STAGES: readonly Stage[] = [
   {
     id: 'login', num: '01', role: 'human', kindLabel: 'OIDC', title: 'Human login',
     hint: 'alice signs in and consents',
-    narration: 'Alice signs in to Keycloak and consents to the agent acting for her. She receives an ordinary OIDC access token that records who she is and what she consented to. It says nothing about the software acting for her.',
-    proves: 'the human. This token alone cannot reach the MCP server: its audience is the agent client, not the resource.',
+    narration: 'Alice logs in to Keycloak and gives the agent permission to act for her. She gets a normal OIDC access token. It says who she is and what she agreed to. It says nothing about the software that will act for her.',
+    proves: 'who the human is. This token alone cannot call the MCP server. It was issued for the agent, not for the server.',
   },
   {
     id: 'svid', num: '02', role: 'workload', kindLabel: 'SPIFFE', title: 'Agent fetches SVIDs',
     hint: 'SPIRE hands the workload its identity',
-    narration: 'SPIRE runs as an intermediate CA under the lab’s offline root (EJBCA), so every workload certificate chains back to real PKI. The agent asks for its own identity and receives two forms of the same SPIFFE ID: an X.509-SVID for mTLS, and a JWT-SVID it uses instead of a client secret. Attestation issues both; nothing is typed or configured.',
-    proves: 'the workload. The agent holds no secret; if the process is not the attested agent, SPIRE hands it nothing.',
+    narration: 'The agent asks SPIRE for its identity. SPIRE first checks that the process really is the agent, then hands it two versions of the same identity: an X.509 certificate for mTLS, and a JWT it uses instead of a client secret. SPIRE is an intermediate CA under the lab’s offline root (EJBCA), so the certificate chains up to real PKI. No secret is typed or stored anywhere.',
+    proves: 'which workload is running. The agent holds no secret. If the process is not the real agent, SPIRE gives it nothing.',
   },
   {
     id: 'exchange', num: '03', role: 'bridge', kindLabel: 'RFC 8693', title: 'Token exchange',
     hint: 'the only bridge',
-    narration: 'The agent presents Alice’s token together with its JWT-SVID and asks Keycloak to exchange them. Keycloak returns one token that carries both identities: sub is still Alice, and a new act claim names the workload acting for her.',
-    proves: 'the bridge. Two separate identity worlds, OIDC and SPIFFE, meet in exactly one place, and the result is auditable in a single token.',
+    narration: 'The agent sends Keycloak two things: Alice’s token and its own JWT-SVID. Keycloak checks both and returns one new token that carries both identities. sub is still Alice. A new act claim names the workload acting for her.',
+    proves: 'the link between the two. This is the only place where the user world (OIDC) and the workload world (SPIFFE) meet. The result is one token you can audit.',
   },
   {
     id: 'call', num: '04', role: 'ink', kindLabel: 'mTLS', title: 'mTLS MCP call',
     hint: 'server checks four things',
-    narration: 'The agent calls the MCP server over mTLS with the exchanged token. The server checks the token’s audience, the peer certificate’s SPIFFE ID, the allowlist, and finally that act.sub equals the peer it is actually talking to.',
-    proves: 'that the token cannot travel. It is bound to the workload it was issued to; a stolen copy is useless from any other peer.',
+    narration: 'The agent calls the MCP server over mTLS, using its X.509 certificate, and sends the exchanged token. The server checks four things: the token is for this server, the caller has a valid certificate, the caller is on the allowlist, and the act claim matches the caller it is actually talking to.',
+    proves: 'the token cannot be stolen and reused. It only works from the workload it was issued to.',
   },
   {
     id: 'chat', num: '05', role: 'ink', kindLabel: 'Agent', title: 'Agent does it end-to-end',
     hint: 'the same guarantees, from a chat',
-    narration: 'Nothing above is a special demo path. When the model decides to call a tool, the identical exchange happens underneath. The model’s intent never becomes authority on its own.',
-    proves: 'that enforcement lives in tokens, not in model behaviour. The agent may ask for anything; the server answers only what Alice’s consented scopes allow.',
+    narration: 'This is not a special demo path. When the model decides to call a tool, the exact same steps run underneath. What the model wants to do never becomes permission by itself.',
+    proves: 'the rules live in the tokens, not in the model. The agent can ask for anything. The server only answers what Alice agreed to.',
   },
 ];
 
