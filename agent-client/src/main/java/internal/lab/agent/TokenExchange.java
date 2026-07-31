@@ -27,8 +27,8 @@ public class TokenExchange {
     TokenExchange(JwtSource jwtSource) {
         this.jwtSource = jwtSource;
         this.tokenEndpoint = System.getenv().getOrDefault("TOKEN_ENDPOINT",
-                "http://keycloak:8080/realms/lab/protocol/openid-connect/token");
-        this.issuerIdentifier = System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/lab");
+                "http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token");
+        this.issuerIdentifier = System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/ai-agents");
     }
 
     String exchange(String subjectToken) throws Exception {

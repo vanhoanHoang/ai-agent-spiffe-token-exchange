@@ -11,7 +11,7 @@ fail() { echo "M6 FAIL: $1"; exit 1; }
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
 
 bash infra/pki/issue-bundle-endpoint-cert.sh >/dev/null
 (cd infra && docker compose up -d --wait spire-server spire-agent keycloak) >/dev/null || fail "core stack not healthy"
@@ -43,10 +43,10 @@ echo "OK: token issued via jwt-spiffe client assertion (azp=agent-client)"
 grep -rqi --exclude=check-m6.sh "agent-client-secret\|AGENT_CLIENT_SECRET" infra agent-client mcp-server scripts && fail "client secret artifacts found in repo"
 kc() { (cd infra && MSYS_NO_PATHCONV=1 docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"); }
 kc config credentials --server http://localhost:8080 --realm master --user admin --password admin >/dev/null 2>&1
-CID=$(kc get clients -r lab -q clientId=agent-client --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/')
-GEN_SECRET=$(kc get "clients/$CID/client-secret" -r lab 2>/dev/null | tr -d ' \n' | sed 's/.*"value":"\([^"]*\)".*/\1/')
+CID=$(kc get clients -r ai-agents -q clientId=agent-client --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/')
+GEN_SECRET=$(kc get "clients/$CID/client-secret" -r ai-agents 2>/dev/null | tr -d ' \n' | sed 's/.*"value":"\([^"]*\)".*/\1/')
 code=$(curl -s -o /dev/null -w '%{http_code}' -d grant_type=client_credentials -d client_id=agent-client \
-  -d "client_secret=$GEN_SECRET" "http://localhost:8080/realms/lab/protocol/openid-connect/token")
+  -d "client_secret=$GEN_SECRET" "http://localhost:8080/realms/ai-agents/protocol/openid-connect/token")
 [ "$code" = "400" ] || [ "$code" = "401" ] || fail "Keycloak's auto-generated secret AUTHENTICATED (got $code) — jwt-spiffe is not the only credential"
 echo "OK: no secret in repo; Keycloak's auto-generated secret row does NOT authenticate ($code)"
 

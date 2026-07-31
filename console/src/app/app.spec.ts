@@ -25,7 +25,7 @@ describe('App shell', () => {
     const fixture = await renderShell('anonymous');
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.brand')?.textContent).toContain('Identity Console');
-    expect(el.querySelector('.env')?.textContent).toContain('spiffe://lab.internal');
+    expect(el.querySelector('.env')?.textContent).toContain('spiffe://ai-agent.id.eviden.internal');
     expect(el.querySelector('.logout')).toBeFalsy();
   });
 

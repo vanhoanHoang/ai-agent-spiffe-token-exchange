@@ -26,7 +26,7 @@ public class McpToolsConfig {
 
     @Bean(destroyMethod = "close")
     McpSyncClient mcpSyncClient(SSLContext spiffeSslContext, BearerHolder bearer) {
-        String baseUrl = System.getenv().getOrDefault("MCP_BASE_URL", "https://mcp.lab.internal:8443");
+        String baseUrl = System.getenv().getOrDefault("MCP_BASE_URL", "https://mcp.ai-agent.id.eviden.internal:8443");
 
         var transport = HttpClientStreamableHttpTransport.builder(baseUrl)
                 .endpoint("/mcp")

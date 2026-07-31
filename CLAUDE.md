@@ -10,7 +10,7 @@ A lab wiring **workload identity (SPIFFE/SPIRE)**, **user identity (OAuth 2.1 vi
 
 Tier-1 specs plus one deliberate Tier-3 bet (`docs/SPEC-REGISTRY.md`). It is **not** a WIMSE implementation — never describe it as one.
 
-Trust domain: `spiffe://lab.internal`
+Trust domain: `spiffe://ai-agent.id.eviden.internal`
 
 ## 2. The one architectural rule
 

@@ -16,11 +16,11 @@
       <div class="choices">
         <a class="btn" href="/oauth2/authorization/keycloak">
           <span class="btn-title">Sign in</span>
-          <span class="btn-sub">standard scopes — the audit tool will be refused</span>
+          <span class="btn-sub">standard scopes. The audit tool will be refused</span>
         </a>
         <a class="btn human" href="/oauth2/authorization/keycloak-audit">
           <span class="btn-title">Sign in with audit scope</span>
-          <span class="btn-sub">adds mcp:audit — what you consent to decides what the agent may do</span>
+          <span class="btn-sub">adds mcp:audit. What you consent to decides what the agent may do</span>
         </a>
       </div>
       <button type="button" class="browse" (click)="browse()">
@@ -29,7 +29,7 @@
     }
 
     <p class="foot">
-      trust domain <code>spiffe://lab.internal</code> · no client secret exists anywhere
+      trust domain <code>spiffe://ai-agent.id.eviden.internal</code> · no client secret exists anywhere
     </p>
   </div>
 </div>

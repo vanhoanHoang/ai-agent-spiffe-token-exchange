@@ -18,7 +18,7 @@ fail() { echo "P25 FAIL: $1"; exit 1; }
 
 KC=http://localhost:8080
 WEB=http://localhost:8090
-AGENT_ID=spiffe://lab.internal/agent-client
+AGENT_ID=spiffe://ai-agent.id.eviden.internal/agent-client
 JWT_RE='[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'
 RESOLVE=(--resolve keycloak:8080:127.0.0.1)
 
@@ -33,10 +33,10 @@ bash infra/ollama/pull-model.sh >/dev/null || fail "demo model pull failed"
 
 K() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose -f infra/docker-compose.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
 K config credentials --server http://localhost:8080 --realm master --user admin --password admin >/dev/null 2>&1
-ALICE_ID=$(K get users -r lab -q username=alice --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/')
+ALICE_ID=$(K get users -r ai-agents -q username=alice --fields id 2>/dev/null | tr -d ' \n' | sed 's/.*"id":"\([^"]*\)".*/\1/')
 ALICE_SUB=$ALICE_ID
 # Force the consent moment every run (dev-file store may remember the grant).
-K delete "users/$ALICE_ID/consents/demo-web" -r lab >/dev/null 2>&1 || true
+K delete "users/$ALICE_ID/consents/demo-web" -r ai-agents >/dev/null 2>&1 || true
 
 WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
 JAR="$WORK/cookies.txt"

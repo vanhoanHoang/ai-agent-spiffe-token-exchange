@@ -19,9 +19,9 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
-MCP_URL=https://mcp.lab.internal:8443/api/whoami
-RESOURCE_ID="https://mcp.lab.internal:8443"
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
+MCP_URL=https://mcp.ai-agent.id.eviden.internal:8443/api/whoami
+RESOURCE_ID="https://mcp.ai-agent.id.eviden.internal:8443"
 PKI=infra/pki
 
 FAIL=0
@@ -50,7 +50,7 @@ bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || { echo "spiffe idp setup f
 
 # ---- Happy path -----------------------------------------------------------
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ "${#USER_TOKEN}" -gt 100 ] && pass "user login (password grant)" || flunk "user login"
 ALICE_SUB=$(decode "$USER_TOKEN" | grep -o '"sub":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -60,7 +60,7 @@ ACCESS=$(echo "$out" | grep -o '"access_token":"[^"]*"' | head -1 | cut -d'"' -f
 
 payload=$(decode "$ACCESS")
 echo "$payload" | grep -q "\"sub\":\"$ALICE_SUB\"" \
-  && echo "$payload" | grep -q '"act":{"sub":"spiffe://lab.internal/agent-client"}' \
+  && echo "$payload" | grep -q '"act":{"sub":"spiffe://ai-agent.id.eviden.internal/agent-client"}' \
   && echo "$payload" | grep -q "$RESOURCE_ID" \
   && pass "token claims (sub=human, act.sub=SPIFFE ID, aud=MCP)" || flunk "token claims" "$payload"
 
@@ -74,7 +74,7 @@ if curl -sk --max-time 10 -H "Authorization: Bearer $ACCESS" "https://localhost:
 else pass "no client cert -> rejected at TLS handshake"; fi
 
 WRONG=$(curl -s -d grant_type=client_credentials -d client_id=wrong-aud-client -d client_secret=wrong-aud-secret \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 out=$(TOKEN="$WRONG" SUBJECT_TOKEN= run_ac agent-client "$MCP_URL")
 echo "$out" | grep -q "^HTTP 401" && pass "wrong-audience token -> 401" || flunk "wrong-audience token" "$out"
 
@@ -103,12 +103,12 @@ awk '/BEGIN CERT/{n++} n==1' "$TMP/chain.pem" > "$TMP/leaf.pem"
 awk '/BEGIN CERT/{n++} n>1'  "$TMP/chain.pem" > "$TMP/rest.pem"
 cat "$TMP/rest.pem" "$TMP/bundle.pem" "$PKI/chain.pem" > "$TMP/untrusted.pem"
 if openssl verify -CAfile "$PKI/ejbca-root.pem" -untrusted "$TMP/untrusted.pem" "$TMP/leaf.pem" >/dev/null 2>&1 \
-   && openssl x509 -in "$PKI/spire-intermediate.pem" -noout -text | grep -A2 "Name Constraints: critical" | grep -q "URI:lab.internal"; then
+   && openssl x509 -in "$PKI/spire-intermediate.pem" -noout -text | grep -A2 "Name Constraints: critical" | grep -q "URI:ai-agent.id.eviden.internal"; then
   pass "SVID chains to EJBCA root, constraint present+critical"
 else flunk "chain of custody"; fi
 rm -rf "$TMP"; docker volume rm -f "$OUT_VOL" >/dev/null 2>&1
 
-(cd infra && docker compose logs mcp-server 2>/dev/null) | grep -q "act={sub=spiffe://lab.internal/agent-client}" \
+(cd infra && docker compose logs mcp-server 2>/dev/null) | grep -q "act={sub=spiffe://ai-agent.id.eviden.internal/agent-client}" \
   && pass "act.sub logged on MCP calls" || flunk "act logging"
 
 echo

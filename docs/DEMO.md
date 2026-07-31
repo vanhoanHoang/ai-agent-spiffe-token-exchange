@@ -36,7 +36,7 @@ architecture header — three chips: trust domain, issuer, resource.
    model thinks, say: the browser holds a session cookie; alice's token lives
    server-side; the exchanged token exists per message only.
 3. **The log line lands** (`docker compose logs -f mcp-server`):
-   `tool=whoami sub=<alice> act={sub=spiffe://lab.internal/agent-client}` —
+   `tool=whoami sub=<alice> act={sub=spiffe://ai-agent.id.eviden.internal/agent-client}` —
    one line, both identities, forever auditable.
 4. In the console, walk the five steps: login token (aud=agent-client — useless
    at the resource), the SVID chain of custody (name-constrained intermediate,

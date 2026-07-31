@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * matching managers come from the default KMF/TMF algorithm override done in
  * {@link McpServerApplication#main}. The KeyManager serves the current
  * X509-SVID per handshake (rotation-safe) and the TrustManager validates peers
- * against the lab.internal SPIFFE bundle — never the system trust store
+ * against the ai-agent.id.eviden.internal SPIFFE bundle — never the system trust store
  * (three-trust-store table, ARCHITECTURE.md).
  */
 @Configuration

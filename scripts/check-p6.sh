@@ -15,7 +15,7 @@ dkr() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker "$@"; }
 fail() { echo "P6 FAIL: $1"; exit 1; }
 
 WEB=http://localhost:8090
-AGENT_ID=spiffe://lab.internal/agent-client
+AGENT_ID=spiffe://ai-agent.id.eviden.internal/agent-client
 JWT_RE='[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'
 RESOLVE=(--resolve keycloak:8080:127.0.0.1)
 
@@ -57,14 +57,14 @@ echo "OK: /login serves the console's own sign-in page"
 
 # ---- 1b. Live X.509-SVID chain view (P6.5): metadata only, never a key -----
 curl -s "$WEB/api/svid" | save svid.json >/dev/null
-grep -q '"spiffeId":"spiffe://lab.internal/agent-client"' "$WORK/svid.json" \
+grep -q '"spiffeId":"spiffe://ai-agent.id.eviden.internal/agent-client"' "$WORK/svid.json" \
   || fail "/api/svid does not name the agent's SPIFFE ID"
 grep -q '"role":"leaf"' "$WORK/svid.json" && grep -q '"serial"' "$WORK/svid.json" \
   || fail "/api/svid missing leaf/serial metadata"
 # P6.6 expert view: full details incl. the EJBCA intermediate's name constraint
 grep -q '"signatureAlgorithm"' "$WORK/svid.json" \
   || fail "/api/svid missing certificate details"
-grep -q 'Permitted: URI:lab.internal' "$WORK/svid.json" \
+grep -q 'Permitted: URI:ai-agent.id.eviden.internal' "$WORK/svid.json" \
   || fail "/api/svid does not surface the URI name constraint"
 grep -qi 'PRIVATE KEY\|BEGIN CERTIFICATE' "$WORK/svid.json" \
   && fail "/api/svid leaks key/PEM material" || true

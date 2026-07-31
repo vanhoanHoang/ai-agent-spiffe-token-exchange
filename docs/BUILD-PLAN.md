@@ -61,7 +61,7 @@ VERIFY: `disk` plugin config key names against `specs/spire/` at your pinned tag
 
 **Exit:** two commands.
 1. `openssl verify` shows a fresh SVID chaining to the EJBCA root.
-2. A **negative test**: attempt to issue outside `spiffe://lab.internal/` and confirm the verifier rejects it. If it does not reject, your verifier does not enforce URI name constraints — record that in `DECISIONS.md`.
+2. A **negative test**: attempt to issue outside `spiffe://ai-agent.id.eviden.internal/` and confirm the verifier rejects it. If it does not reject, your verifier does not enforce URI name constraints — record that in `DECISIONS.md`.
 
 *Do not let an agent drive EJBCA CA hierarchy setup. Prepare scripts, run them yourself.*
 
@@ -108,7 +108,7 @@ RFC 8693 **as Keycloak 26.x actually implements it** (verified against the 26.x 
 
 `act.sub` comes from a **custom protocol mapper** (workstream B wakes up for this, not for client auth): the actor is the *authenticated client*, whose identity is already the SPIFFE ID via `jwt.credential.sub`. Semantically faithful to RFC 8693 — the agent is the acting party, and its client authentication already proved who it is.
 
-**Exit:** decoded access token shows `sub` = human, `act.sub` = `spiffe://lab.internal/...`, `aud` = MCP server. The MCP server logs both on every call.
+**Exit:** decoded access token shows `sub` = human, `act.sub` = `spiffe://ai-agent.id.eviden.internal/...`, `aud` = MCP server. The MCP server logs both on every call.
 
 *The mapper is mandatory, not a contingency. Budget half a day for it plus the audience wiring.*
 

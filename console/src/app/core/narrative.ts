@@ -76,10 +76,10 @@ export function custodyHops(run: DemoRun): readonly CustodyHop[] {
     {
       role: 'Issued by', name: 'SPIRE Intermediate CA',
       detail: 'issued offline by EJBCA',
-      badge: 'Name Constraints (critical): URI host = lab.internal',
+      badge: 'Name Constraints (critical): URI host = ai-agent.id.eviden.internal',
     },
     {
-      role: 'Anchored at', name: 'Lab Root CA (EJBCA)',
+      role: 'Anchored at', name: 'Eviden Root CA (EJBCA)',
       detail: 'offline root, the trust anchor',
     },
   ];

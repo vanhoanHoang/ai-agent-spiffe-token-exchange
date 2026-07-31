@@ -50,13 +50,13 @@ public class LabTools {
         return result;
     }
 
-    @McpTool(name = "lab_status",
-            description = "Reports which identity components of the lab are reachable and what this server enforces.")
+    @McpTool(name = "stack_status",
+            description = "Reports which identity components of the stack are reachable and what this server enforces.")
     public Map<String, Object> labStatus() {
-        log.info("tool=lab_status sub={}", currentJwt().getSubject());
+        log.info("tool=stack_status sub={}", currentJwt().getSubject());
         return Map.of(
-                "trust_domain", "spiffe://lab.internal",
-                "resource_id", "https://mcp.lab.internal:8443",
+                "trust_domain", "spiffe://ai-agent.id.eviden.internal",
+                "resource_id", "https://mcp.ai-agent.id.eviden.internal:8443",
                 "enforced", List.of(
                         "token audience == this server (anti-passthrough)",
                         "mTLS with X509-SVID (client-auth: need)",

@@ -9,7 +9,7 @@
       <p class="rotation">
         leaf expires in <strong>{{ r.expires }}</strong>
         · rotation expected in <strong>{{ r.rotates }}</strong>
-        <span class="note">(SPIRE renews at ~half of the 1h TTL — estimate)</span>
+        <span class="note">(estimate: SPIRE renews at about half of the 1h TTL)</span>
       </p>
     }
     @for (c of svid().chain; track c.sha256) {
@@ -33,7 +33,7 @@
     }
     <p class="footnote">
       Fetched live from the agent's Workload API. After a rotation the leaf's
-      serial and validity change; the SPIFFE ID and the chain above it do not.
+      serial and validity change. The SPIFFE ID and the chain above it do not.
     </p>
   </div>
 </div>

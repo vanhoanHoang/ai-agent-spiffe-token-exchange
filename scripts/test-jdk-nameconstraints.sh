@@ -19,7 +19,7 @@ mk_leaf() { # $1=uri $2=name
   openssl x509 -req -in "$TMP/$2.csr" -CA "$PKI/spire-intermediate.pem" -CAkey "$PKI/spire-intermediate-key.pem" \
     -CAcreateserial -out "$TMP/$2.pem" -days 1 -extfile "$TMP/$2.ext" 2>/dev/null
 }
-mk_leaf "spiffe://lab.internal/nc-control" good
+mk_leaf "spiffe://ai-agent.id.eviden.internal/nc-control" good
 mk_leaf "spiffe://evil.example/impostor" evil
 
 cat > "$TMP/NcTest.java" <<'JEOF'

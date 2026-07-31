@@ -17,7 +17,7 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-AGENT_ID=spiffe://lab.internal/agent-client
+AGENT_ID=spiffe://ai-agent.id.eviden.internal/agent-client
 
 bash infra/pki/issue-bundle-endpoint-cert.sh >/dev/null
 (cd infra && docker compose up -d --wait spire-server spire-agent keycloak) >/dev/null || fail "core stack not healthy"
@@ -28,7 +28,7 @@ bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || fail "keycloak setup faile
 bash infra/ollama/pull-model.sh >/dev/null || fail "demo model pull failed"
 
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ "${#USER_TOKEN}" -gt 100 ] || fail "no user token"
 ALICE_SUB=$(python -c "import base64,json,sys; t=sys.argv[1].split('.')[1]; t+='='*(-len(t)%4); print(json.loads(base64.urlsafe_b64decode(t))['sub'])" "$USER_TOKEN")
 

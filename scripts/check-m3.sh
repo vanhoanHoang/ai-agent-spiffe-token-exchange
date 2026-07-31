@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # M3 exit criterion (BUILD-PLAN M3), two commands plus obligations:
 #  1. openssl verify: a FRESH SVID chains to the EJBCA root.
-#  2. Negative test: a leaf with URI SAN outside spiffe://lab.internal/ signed by
+#  2. Negative test: a leaf with URI SAN outside spiffe://ai-agent.id.eviden.internal/ signed by
 #     the intermediate is REJECTED (with an in-domain positive control to prove
 #     the rejection is the name constraint, not setup noise). Result -> D-002.
 # Plus D-003 obligation: agent.conf no longer contains insecure_bootstrap.
@@ -21,10 +21,10 @@ trap 'rm -rf "$TMP"; docker volume rm -f "$OUT_VOL" >/dev/null 2>&1 || true' EXI
 for f in ejbca-root.pem spire-intermediate.pem spire-intermediate-key.pem chain.pem; do
   [ -f "$PKI/$f" ] || fail "contract file missing: $PKI/$f (run infra/pki/setup-ejbca.sh)"
 done
-# RFC 5280 URI constraints match the URI HOST — openssl renders "URI:lab.internal",
-# which permits spiffe://lab.internal/* and nothing else.
-openssl x509 -in "$PKI/spire-intermediate.pem" -noout -text | grep -A3 "Name Constraints" | grep -q "URI:lab.internal" \
-  || fail "intermediate carries no URI name constraint for host lab.internal"
+# RFC 5280 URI constraints match the URI HOST — openssl renders "URI:ai-agent.id.eviden.internal",
+# which permits spiffe://ai-agent.id.eviden.internal/* and nothing else.
+openssl x509 -in "$PKI/spire-intermediate.pem" -noout -text | grep -A3 "Name Constraints" | grep -q "URI:ai-agent.id.eviden.internal" \
+  || fail "intermediate carries no URI name constraint for host ai-agent.id.eviden.internal"
 
 # -- D-003 obligation ------------------------------------------------------
 grep -q "insecure_bootstrap" infra/spire/agent.conf && fail "insecure_bootstrap still present in agent.conf"
@@ -41,7 +41,7 @@ for i in $(seq 1 10); do
       -v spiffe-mcp-lab_spire-agent-socket:/spire-sock:ro -v "$OUT_VOL":/out \
       --entrypoint /opt/spire/bin/spire-agent ghcr.io/spiffe/spire-agent:1.15.2 \
       api fetch x509 -socketPath /spire-sock/api.sock -write /out 2>&1) \
-     && echo "$out" | grep -q "spiffe://lab.internal/agent-client"; then ok=1; break; fi
+     && echo "$out" | grep -q "spiffe://ai-agent.id.eviden.internal/agent-client"; then ok=1; break; fi
   sleep 3
 done
 [ -n "$ok" ] || fail "could not fetch SVID: $out"
@@ -65,7 +65,7 @@ mk_leaf() { # $1=uri $2=name
   openssl x509 -req -in "$TMP/$2.csr" -CA "$PKI/spire-intermediate.pem" -CAkey "$PKI/spire-intermediate-key.pem" \
     -CAcreateserial -out "$TMP/$2.pem" -days 1 -extfile "$TMP/$2.ext" 2>/dev/null
 }
-mk_leaf "spiffe://lab.internal/neg-test-control" good
+mk_leaf "spiffe://ai-agent.id.eviden.internal/neg-test-control" good
 mk_leaf "spiffe://evil.example/impostor" evil
 
 openssl verify -CAfile "$PKI/ejbca-root.pem" -untrusted "$PKI/chain.pem" "$TMP/good.pem" >/dev/null \

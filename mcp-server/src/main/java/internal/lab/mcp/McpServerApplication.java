@@ -15,7 +15,7 @@ public class McpServerApplication {
         // the default KMF/TMF algorithm so Tomcat's JSSE layer builds managers that
         // read the X509Source configured by SPIFFE_ENDPOINT_SOCKET. acceptAll only
         // skips the per-ID check at the TLS handshake — chain validation against the
-        // lab.internal bundle still applies, and the SPIFFE-ID allowlist is enforced
+        // ai-agent.id.eviden.internal bundle still applies, and the SPIFFE-ID allowlist is enforced
         // with a 403 in SpiffeAllowlistFilter.
         SpiffeProvider.install();
         Security.setProperty("ssl.KeyManagerFactory.algorithm", "Spiffe");

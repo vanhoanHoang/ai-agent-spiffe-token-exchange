@@ -14,17 +14,17 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://keycloak:8080/realms/lab
+          issuer-uri: http://keycloak:8080/realms/ai-agents
           # Explicit JWKS URI: issuer-uri alone triggers an OIDC discovery fetch at
           # startup, but the lab realm is provisioned AFTER boot (setup-realm.sh).
           # withJwkSetUri is lazy — first fetch happens on first token validation.
-          jwk-set-uri: http://keycloak:8080/realms/lab/protocol/openid-connect/certs
+          jwk-set-uri: http://keycloak:8080/realms/ai-agents/protocol/openid-connect/certs
 
 mcp:
   # Canonical resource identifier = required token audience (D-005).
-  resource-id: https://mcp.lab.internal:8443
+  resource-id: https://mcp.ai-agent.id.eviden.internal:8443
   # Workload allowlist (M5, comma-separated): which SPIFFE IDs may call at all.
   # Effective permissions stay user-scopes ∩ agent-allowed — this is the outer gate.
   # test-agent is a permanent fixture proving the D-009 act↔peer binding check
   # (allowlisted, yet rejected when replaying another workload's token).
-  allowed-spiffe-ids: spiffe://lab.internal/agent-client,spiffe://lab.internal/test-agent
+  allowed-spiffe-ids: spiffe://ai-agent.id.eviden.internal/agent-client,spiffe://ai-agent.id.eviden.internal/test-agent

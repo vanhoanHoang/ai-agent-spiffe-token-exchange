@@ -33,10 +33,12 @@
   --chip-orange-soft: #eeae95;
   --kicker-orange: #f08a63;
 
-  --font-heading: 'Cormorant Garamond', Georgia, serif;
-  --font-heading-weight: 600;
-  --font-body: 'Lora', Georgia, serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Corporate sans (Montserrat, per eviden.com) replaced the classical serifs.
+     Bundled via @fontsource-variable so the console still renders offline. */
+  --font-heading: 'Montserrat Variable', 'Segoe UI', Arial, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: 'Montserrat Variable', 'Segoe UI', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'SF Mono', Menlo, monospace;
 
   --space-1: 5px;
   --space-2: 9px;

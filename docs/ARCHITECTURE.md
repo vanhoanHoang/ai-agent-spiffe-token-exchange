@@ -2,7 +2,7 @@
 
 Lab wiring **workload identity (SPIFFE/SPIRE)**, **user identity (OAuth 2.1 via Keycloak)**, an **MCP server (Spring Boot)**, and a **real PKI (EJBCA)** into one stack.
 
-Trust domain: `spiffe://lab.internal`
+Trust domain: `spiffe://ai-agent.id.eviden.internal`
 
 > **The one rule:** SPIFFE answers *which workload*. OIDC answers *on behalf of which human*. Never substitute one for the other. The only bridge is RFC 8693 token exchange.
 
@@ -26,7 +26,7 @@ Trust domain: `spiffe://lab.internal`
 
  SPIRE server ──UpstreamAuthority (disk)──► EJBCA-issued,
                                             name-constrained intermediate
-                                            (permitted: URI:spiffe://lab.internal/)
+                                            (permitted: URI:spiffe://ai-agent.id.eviden.internal/)
 
  Keycloak ◄──SPIFFE bundle endpoint (https_web), configured OUT OF BAND──
              (bundle URL is NOT derivable from any SVID; keyed by trust domain)
@@ -37,7 +37,7 @@ Trust domain: `spiffe://lab.internal`
 1. Human authenticates at Keycloak → **user token** (`sub` = human).
 2. `agent-client` obtains its X509-SVID and JWT-SVID from the SPIRE agent Workload API.
 3. `agent-client` calls the Keycloak token endpoint: **RFC 8693 token exchange** — `subject_token` = user token, client authentication = JWT-SVID with assertion type `urn:ietf:params:oauth:client-assertion-type:jwt-spiffe`, `resource` = MCP server URI. The JWT-SVID `aud` is the **AS issuer identifier, as the sole value** (normative text of the draft; the draft's token-endpoint example is a known wart — token-endpoint-as-`aud` anywhere in this repo is a bug).
-4. Keycloak validates the JWT-SVID against trust-domain keys from the bundle endpoint and issues an access token: `sub` = human, `act.sub` = `spiffe://lab.internal/...`, `aud` = MCP server.
+4. Keycloak validates the JWT-SVID against trust-domain keys from the bundle endpoint and issues an access token: `sub` = human, `act.sub` = `spiffe://ai-agent.id.eviden.internal/...`, `aud` = MCP server.
 5. `agent-client` calls `mcp-server` over **mTLS with X509-SVIDs**, presenting the exchanged token as bearer.
 6. `mcp-server` enforces, in order: peer SPIFFE ID is allowlisted; token signature via Keycloak JWKS; `aud` == this server (anti-passthrough); effective scopes = `user scopes ∩ agent allowed scopes`. It logs `sub` and `act.sub` on every call.
 
@@ -49,7 +49,7 @@ Three unrelated validation roots coexist. Every TLS/JWT bug in this lab starts w
 
 | Trust store | Contents | Who uses it, for what | Explicitly NOT |
 |---|---|---|---|
-| **SPIFFE trust bundle** (`lab.internal`) | SPIRE-distributed CA keys; upstream-chained to EJBCA via name-constrained intermediate | `mcp-server` validates client X509-SVIDs in mTLS; `agent-client` validates `mcp-server`'s SVID; Keycloak validates JWT-SVID client assertions (keys fetched from the SPIFFE bundle endpoint, `https_web`) | **MUST NOT** be the system trust store, and X509-SVIDs **MUST NOT** validate via the system store (draft §5.2.3) |
+| **SPIFFE trust bundle** (`ai-agent.id.eviden.internal`) | SPIRE-distributed CA keys; upstream-chained to EJBCA via name-constrained intermediate | `mcp-server` validates client X509-SVIDs in mTLS; `agent-client` validates `mcp-server`'s SVID; Keycloak validates JWT-SVID client assertions (keys fetched from the SPIFFE bundle endpoint, `https_web`) | **MUST NOT** be the system trust store, and X509-SVIDs **MUST NOT** validate via the system store (draft §5.2.3) |
 | **System / Web PKI store** | OS default CA set | Clients validating the AS's HTTPS server cert (draft §3.2); Keycloak validating the bundle-endpoint server cert (`https_web` profile) | Never used to validate any SVID |
 | **Keycloak realm keys (JWKS)** | The realm's OIDC signing keys, via OIDC discovery of the Keycloak realm | `mcp-server` validates user/exchanged access tokens | Not the SPIFFE bundle; not SPIRE's OIDC Discovery Provider (unused here) |
 
@@ -76,4 +76,4 @@ Workstreams share no state and run in separate git worktrees, one branch per mil
 
 ## PKI chain of custody
 
-EJBCA root → name-constrained intermediate (`permittedSubtrees: URI:spiffe://lab.internal/`) → SPIRE server (`disk` UpstreamAuthority) → SVIDs. Issuance is human-run per the file contract in `infra/pki/README.md`; if a file there is missing, stop and ask — never substitute a self-signed cert. Whether each verifier in the stack actually *enforces* the URI name constraint is an open question tracked as D-002; until proven, the constraint is governance value, not a technical control.
+EJBCA root → name-constrained intermediate (`permittedSubtrees: URI:spiffe://ai-agent.id.eviden.internal/`) → SPIRE server (`disk` UpstreamAuthority) → SVIDs. Issuance is human-run per the file contract in `infra/pki/README.md`; if a file there is missing, stop and ask — never substitute a self-signed cert. Whether each verifier in the stack actually *enforces* the URI name constraint is an open question tracked as D-002; until proven, the constraint is governance value, not a technical control.

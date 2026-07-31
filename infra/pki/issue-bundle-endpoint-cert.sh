@@ -3,7 +3,7 @@
 # Signed by the SpireIntermediate key held on disk; DNS SAN "spire-server"
 # (the in-network hostname Keycloak dials). The URI name constraint on the
 # intermediate does not constrain DNS names (RFC 5280 constraints are per
-# name-type), and Keycloak chains leaf -> intermediate -> LabRoot via its
+# name-type), and Keycloak chains leaf -> intermediate -> EvidenRoot via its
 # truststore (--truststore-paths=ejbca-root.pem) — the lab's stand-in for
 # "server certs via Web PKI" (draft §3.2 model, D-007).
 # Output (gitignored): bundle-endpoint.crt.pem (leaf+intermediate), bundle-endpoint.key.pem
@@ -26,4 +26,4 @@ rm -f .be.csr .be.ext .be.leaf.pem
 
 openssl verify -CAfile ejbca-root.pem -untrusted spire-intermediate.pem bundle-endpoint.crt.pem >/dev/null \
   || { echo "FATAL: bundle-endpoint cert does not chain to EJBCA root"; exit 1; }
-echo "bundle-endpoint cert issued (DNS:spire-server, chains to LabRoot)"
+echo "bundle-endpoint cert issued (DNS:spire-server, chains to EvidenRoot)"

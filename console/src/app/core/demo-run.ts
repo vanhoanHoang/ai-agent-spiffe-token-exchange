@@ -61,7 +61,7 @@ function require(cond: boolean, what: string): asserts cond {
 
 function validateIdentity(r: DemoRun): void {
   require(r.version === 1, 'unsupported version');
-  require(r.trust_domain === 'spiffe://lab.internal', 'wrong trust domain');
+  require(r.trust_domain === 'spiffe://ai-agent.id.eviden.internal', 'wrong trust domain');
   require(typeof r.actors?.human?.sub === 'string', 'actors.human missing');
   require(typeof r.actors?.agent?.spiffe_id === 'string', 'actors.agent missing');
   require(typeof r.actors?.mcp_server?.resource_id === 'string', 'actors.mcp_server missing');

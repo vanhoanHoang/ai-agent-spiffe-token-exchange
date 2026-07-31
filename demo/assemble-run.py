@@ -10,9 +10,9 @@ import re
 import sys
 from pathlib import Path
 
-AGENT_ID = "spiffe://lab.internal/agent-client"
-MCP_ID = "spiffe://lab.internal/mcp-server"
-RESOURCE_ID = "https://mcp.lab.internal:8443"
+AGENT_ID = "spiffe://ai-agent.id.eviden.internal/agent-client"
+MCP_ID = "spiffe://ai-agent.id.eviden.internal/mcp-server"
+RESOURCE_ID = "https://mcp.ai-agent.id.eviden.internal:8443"
 
 # The five M9 rejection lines as acceptance.sh prints them (infra/acceptance.sh).
 REJECTIONS = [
@@ -49,8 +49,8 @@ def log_lines(path: Path) -> list[str]:
 
 def main(work: Path, out_path: Path) -> None:
     subject = decode((work / "subject.jwt").read_text(), "subject_token",
-                     "alice's login token (password grant; aud=agent-client via the "
-                     "agent-audience scope — D-008 subject-token rule)")
+                     "alice's login token: issued to alice for the agent "
+                     "(aud = agent-client), before any exchange")
     exchanged = decode((work / "exchanged.jwt").read_text(), "exchanged_token",
                        "RFC 8693 exchange, client-authenticated with the agent's JWT-SVID "
                        "(jwt-spiffe): sub = alice, act.sub = the agent, aud = the MCP server")
@@ -67,7 +67,7 @@ def main(work: Path, out_path: Path) -> None:
     doc = {
         "version": 1,
         "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "trust_domain": "spiffe://lab.internal",
+        "trust_domain": "spiffe://ai-agent.id.eviden.internal",
         "actors": {
             "human": {"username": "alice", "sub": subject["claims"]["sub"]},
             "agent": {"spiffe_id": AGENT_ID},
@@ -78,14 +78,14 @@ def main(work: Path, out_path: Path) -> None:
             {
                 "id": "login", "kind": "login", "verdict": "pass",
                 "title": "alice logs in",
-                "detail": "password grant (P2 capture; P2.5 replaces this step with "
-                          "authorization code + PKCE + consent)",
+                "detail": "scripted sign-in used for this capture; the live demo "
+                          "uses the browser login with consent",
                 "token_ref": "subject_token",
             },
             {
                 "id": "exchange", "kind": "exchange", "verdict": "pass",
                 "title": "jwt-spiffe token exchange (RFC 8693)",
-                "detail": "client authentication = the agent's JWT-SVID; no client secret exists",
+                "detail": "client authentication is the agent's JWT-SVID. No client secret exists",
                 "token_ref": "exchanged_token",
             },
             {
@@ -98,8 +98,8 @@ def main(work: Path, out_path: Path) -> None:
             {
                 "id": "chat-audit-refused", "kind": "chat", "verdict": "deny",
                 "title": "scope refusal: read_audit_log without mcp:audit",
-                "detail": "the model attempts the call; the token decides — enforcement is tokens, "
-                          "not model behavior",
+                "detail": "the model attempts the call and the token refuses it. "
+                          "Enforcement is tokens, not model behavior",
                 "prompt": (work / "prompt2.txt").read_text().strip(),
                 "answer": (work / "answer2.txt").read_text(encoding="utf-8", errors="replace").strip(),
                 "log_lines": log_lines(work / "logs2.txt"),
@@ -108,8 +108,8 @@ def main(work: Path, out_path: Path) -> None:
         "rejections": rejections,
         "chain_of_custody": {
             "verified": custody_ok,
-            "notes": "fresh SVID chains to the EJBCA root; the intermediate's URI name "
-                     "constraint (URI:lab.internal) is present and critical",
+            "notes": "fresh SVID chains to the EJBCA root. The intermediate's URI name "
+                     "constraint (URI:ai-agent.id.eviden.internal) is present and critical",
             "source": "infra/acceptance.sh",
         },
         "log_tail": log_lines(work / "logtail.txt"),

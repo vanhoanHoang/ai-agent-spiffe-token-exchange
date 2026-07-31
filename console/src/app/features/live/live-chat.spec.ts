@@ -45,7 +45,7 @@ describe('LiveChat', () => {
 
   it('streams real events: hops complete in order, feed shows details, answer lands', async () => {
     const fixture = await render({ answer: 'You are alice; I act as the agent.' }, [
-      ['svid', 'JWT-SVID minted for spiffe://lab.internal/agent-client'],
+      ['svid', 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-client'],
       ['exchange', 'RFC 8693 exchange done'],
       ['tool', 'whoami'],
     ]);
@@ -61,7 +61,7 @@ describe('LiveChat', () => {
 
   it('marks the in-flight hop failed when the chain refuses', async () => {
     const fixture = await render({ error: 'exchange failed: HTTP 400' }, [
-      ['svid', 'JWT-SVID minted for spiffe://lab.internal/agent-client'],
+      ['svid', 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-client'],
     ]);
     await sendMessage(fixture, 'break');
     const el = fixture.nativeElement as HTMLElement;

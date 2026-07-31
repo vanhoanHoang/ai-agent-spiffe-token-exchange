@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SpiffeIdentityConfig {
 
-    static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://lab.internal/mcp-server");
+    static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://ai-agent.id.eviden.internal/mcp-server");
 
     @Bean(destroyMethod = "close")
     X509Source x509Source() throws Exception {

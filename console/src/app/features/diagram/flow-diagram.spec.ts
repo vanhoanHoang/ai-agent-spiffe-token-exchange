@@ -14,7 +14,7 @@ describe('FlowDiagram', () => {
   it('renders the six architecture nodes', async () => {
     const fixture = await render('login');
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    for (const n of ['alice', 'Keycloak', 'agent-client', 'SPIRE Server', 'Lab Root CA', 'MCP server']) {
+    for (const n of ['alice', 'Keycloak', 'agent-client', 'SPIRE Server', 'Eviden Root CA', 'MCP server']) {
       expect(text).toContain(n);
     }
   });

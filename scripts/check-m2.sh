@@ -32,17 +32,28 @@ for w in agent-client mcp-server; do
   ok=""
   for i in $(seq 1 10); do   # entries take a few seconds to sync to the agent
     docker volume rm -f "$OUT_VOL" >/dev/null 2>&1 || true
-    if out=$(fetch_svid "$w") && echo "$out" | grep -q "spiffe://lab.internal/$w"; then ok=1; break; fi
+    if out=$(fetch_svid "$w") && echo "$out" | grep -q "spiffe://ai-agent.id.eviden.internal/$w"; then ok=1; break; fi
     sleep 3
   done
   [ -n "$ok" ] || fail "no SVID for $w after retries; last output: $out"
 
   dkr run --rm -v "$OUT_VOL":/out:ro busybox cat /out/svid.0.pem > "$TMP/$w.pem"
-  openssl x509 -in "$TMP/$w.pem" -noout -ext subjectAltName | grep -q "spiffe://lab.internal/$w" \
+  openssl x509 -in "$TMP/$w.pem" -noout -ext subjectAltName | grep -q "spiffe://ai-agent.id.eviden.internal/$w" \
     || fail "$w SVID URI SAN mismatch"
-  openssl verify -CAfile "$TMP/bundle.pem" "$TMP/$w.pem" >/dev/null \
-    || fail "$w SVID does not chain to the trust bundle"
-  echo "OK: $w -> spiffe://lab.internal/$w (SAN + chain verified)"
+  # svid.0.pem = leaf + intermediates (X509-SVID chain); the bundle holds only
+  # trust anchors. Verify the leaf with the delivered intermediates as untrusted
+  # links — the previous leaf-vs-bundle verify only passed while a legacy
+  # self-signed SPIRE CA still sat in the old datastore's bundle.
+  rm -f "$TMP/leaf.pem" "$TMP/inter.pem"
+  awk -v dir="$TMP" '/-----BEGIN CERTIFICATE-----/{n++} n==1{print > (dir"/leaf.pem")} n>1{print > (dir"/inter.pem")}' "$TMP/$w.pem"
+  if [ -s "$TMP/inter.pem" ]; then
+    openssl verify -CAfile "$TMP/bundle.pem" -untrusted "$TMP/inter.pem" "$TMP/leaf.pem" >/dev/null \
+      || fail "$w SVID does not chain to the trust bundle"
+  else
+    openssl verify -CAfile "$TMP/bundle.pem" "$TMP/leaf.pem" >/dev/null \
+      || fail "$w SVID does not chain to the trust bundle"
+  fi
+  echo "OK: $w -> spiffe://ai-agent.id.eviden.internal/$w (SAN + chain verified)"
 done
 
 echo "M2 PASS: both workloads receive valid SVIDs with expected SPIFFE IDs"

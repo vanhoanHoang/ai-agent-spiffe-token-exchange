@@ -24,7 +24,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Second half of the D-006 enforcement split: the TLS handshake already proved
- * the peer holds a valid lab.internal SVID; this filter enforces WHICH workloads
+ * the peer holds a valid ai-agent.id.eviden.internal SVID; this filter enforces WHICH workloads
  * may call (allowlist) and answers 403 otherwise — the M5/M9 "unlisted SPIFFE
  * ID" semantics. SPIFFE ID != user authorization: this gate only says which
  * workload may present tokens here, never what the human may do.

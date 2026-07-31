@@ -20,7 +20,7 @@ describe('TokenCard', () => {
     const fixture = await render('exchanged_token');
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('act.sub');
-    expect(el.textContent).toContain('spiffe://lab.internal/agent-client');
+    expect(el.textContent).toContain('spiffe://ai-agent.id.eviden.internal/agent-client');
     expect(el.textContent).toContain('…redacted…');
   });
 
@@ -31,6 +31,6 @@ describe('TokenCard', () => {
     el.querySelector<HTMLButtonElement>('.toggle')?.click();
     await fixture.whenStable();
     expect(el.textContent).toContain('iss');
-    expect(el.textContent).toContain('http://keycloak:8080/realms/lab');
+    expect(el.textContent).toContain('http://keycloak:8080/realms/ai-agents');
   });
 });

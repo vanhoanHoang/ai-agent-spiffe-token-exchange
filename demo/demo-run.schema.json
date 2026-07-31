@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://lab.internal/demo-run.schema.json",
+  "$id": "https://ai-agent.id.eviden.internal/demo-run.schema.json",
   "title": "DEMO_RUN",
   "description": "One captured demo run of the SPIFFE/OIDC lab, rendered offline by the M11 console. Holds decoded claims and log lines only — signatures are always the literal string REDACTED, and no complete token may ever appear in a capture.",
   "type": "object",
@@ -8,7 +8,7 @@
   "properties": {
     "version": { "const": 1 },
     "captured_at": { "type": "string", "format": "date-time" },
-    "trust_domain": { "const": "spiffe://lab.internal" },
+    "trust_domain": { "const": "spiffe://ai-agent.id.eviden.internal" },
     "actors": {
       "type": "object",
       "required": ["human", "agent", "mcp_server"],
@@ -24,13 +24,13 @@
         "agent": {
           "type": "object",
           "required": ["spiffe_id"],
-          "properties": { "spiffe_id": { "type": "string", "pattern": "^spiffe://lab\\.internal/" } }
+          "properties": { "spiffe_id": { "type": "string", "pattern": "^spiffe://ai-agent\\.id\\.eviden\\.internal/" } }
         },
         "mcp_server": {
           "type": "object",
           "required": ["spiffe_id", "resource_id"],
           "properties": {
-            "spiffe_id": { "type": "string", "pattern": "^spiffe://lab\\.internal/" },
+            "spiffe_id": { "type": "string", "pattern": "^spiffe://ai-agent\\.id\\.eviden\\.internal/" },
             "resource_id": { "type": "string" }
           }
         }

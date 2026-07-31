@@ -2,7 +2,7 @@
 
 A lab wiring four things that rarely meet in one stack:
 
-- **Workload identity** — SPIFFE/SPIRE, trust domain `spiffe://lab.internal`
+- **Workload identity** — SPIFFE/SPIRE, trust domain `spiffe://ai-agent.id.eviden.internal`
 - **User identity** — OAuth 2.1 / OIDC via Keycloak (the only real AS here)
 - **An MCP server** — Spring Boot resource server with proper audience discipline
 - **A real PKI** — EJBCA issuing a name-constrained intermediate above SPIRE

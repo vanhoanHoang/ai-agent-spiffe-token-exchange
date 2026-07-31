@@ -24,18 +24,18 @@ An editable canvas version lives in [architecture.excalidraw](architecture.excal
 flowchart TB
     HUMAN(["Human"])
 
-    subgraph LAB["docker compose · network 'lab' · trust domain spiffe://lab.internal"]
+    subgraph LAB["docker compose · network 'lab' · trust domain spiffe://ai-agent.id.eviden.internal"]
         direction TB
         subgraph CORE["default profile — built (M1–M3)"]
             KC["Keycloak 26.6.0 — the only OIDC / AS<br/>start-dev --features=spiffe (D-001)<br/>SPIFFE identity provider: trustDomain + bundleEndpoint<br/>client auth: federated-jwt (jwt.credential.sub = SPIFFE ID)"]
-            SS["SPIRE server 1.15.2<br/>trust_domain = lab.internal<br/>UpstreamAuthority 'disk' (M3):<br/>EJBCA intermediate + ejbca-root bundle"]
+            SS["SPIRE server 1.15.2<br/>trust_domain = ai-agent.id.eviden.internal<br/>UpstreamAuthority 'disk' (M3):<br/>EJBCA intermediate + ejbca-root bundle"]
             SA["SPIRE agent 1.15.2<br/>Workload API on unix socket<br/>workload attestor: docker labels (M2)<br/>node attestor: x509pop (bootstrap CA, D-003)"]
         end
         subgraph PKI["profile 'pki' — built (M3)"]
             EJBCA["EJBCA CE 9.3.7 (D-004)<br/>offline issuance: infra/pki/setup-ejbca.sh"]
         end
         subgraph APP["profile 'app' — planned (M4+)"]
-            MCP["mcp-server · Spring Boot resource server<br/>mcp.lab.internal:8443<br/>enforces: ① peer SPIFFE ID allowlisted<br/>② sig via Keycloak JWKS ③ aud == this server<br/>④ scopes = user ∩ agent · logs sub + act.sub"]
+            MCP["mcp-server · Spring Boot resource server<br/>mcp.ai-agent.id.eviden.internal:8443<br/>enforces: ① peer SPIFFE ID allowlisted<br/>② sig via Keycloak JWKS ③ aud == this server<br/>④ scopes = user ∩ agent · logs sub + act.sub"]
         end
         AC["agent-client — planned (M6–M7)<br/>SVID → token exchange → MCP call<br/>assertion-type URN = exactly ONE constant"]
     end
@@ -45,7 +45,7 @@ flowchart TB
     AC -. "(3) RFC 8693 token exchange —<br/>client auth = JWT-SVID, type …:jwt-spiffe<br/>aud = AS issuer identifier, sole value" .-> KC
     AC -. "(4) mTLS with X509-SVIDs +<br/>exchanged access token" .-> MCP
     MCP -. "(5) fetch JWKS (realm keys)" .-> KC
-    EJBCA -- "name-constrained intermediate, issued offline (M3)<br/>permittedSubtrees: URI spiffe://lab.internal/" --> SS
+    EJBCA -- "name-constrained intermediate, issued offline (M3)<br/>permittedSubtrees: URI spiffe://ai-agent.id.eviden.internal/" --> SS
     SS -- "node attestation (x509pop) · SVID minting" --> SA
     SA -. "mcp-server's own SVID (M5)" .-> MCP
     SS -. "SPIFFE bundle endpoint (https_web, M6)<br/>URL configured OUT OF BAND — not derivable from any SVID" .-> KC
@@ -77,7 +77,7 @@ sequenceDiagram
 
     AC->>KC: POST /token — RFC 8693 token exchange<br/>subject_token = user token<br/>client_assertion_type = urn:ietf:params:oauth:client-assertion-type:jwt-spiffe<br/>client_assertion = JWT-SVID · resource = MCP URI
     Note over KC: validates JWT-SVID against trust-domain keys<br/>from the SPIFFE bundle endpoint (https_web),<br/>configured out of band — NOT the system store.<br/>sub prefix-matched to trustDomain, mapped to the<br/>registered client via jwt.credential.sub (federated-jwt)
-    KC-->>AC: access token — sub = human,<br/>act.sub = spiffe://lab.internal/agent-client,<br/>aud = mcp-server
+    KC-->>AC: access token — sub = human,<br/>act.sub = spiffe://ai-agent.id.eviden.internal/agent-client,<br/>aud = mcp-server
 
     AC->>MCP: MCP call over mTLS (X509-SVIDs both sides)<br/>Authorization: Bearer exchanged token
     Note over MCP: enforces, in order:<br/>1. peer SPIFFE ID allowlisted<br/>2. token signature via Keycloak realm JWKS<br/>3. aud == this server (anti-passthrough)<br/>4. effective scopes = user ∩ agent-allowed
@@ -92,16 +92,16 @@ sequenceDiagram
 flowchart TB
     subgraph EJBCACHAIN["EJBCA hierarchy — infra/pki file contract, issued offline by setup-ejbca.sh"]
         ROOT["EJBCA Root CA<br/>ejbca-root.pem"]
-        INT["Name-constrained intermediate<br/>spire-intermediate.pem (+ key, never committed)<br/>permittedSubtrees: URI spiffe://lab.internal/"]
+        INT["Name-constrained intermediate<br/>spire-intermediate.pem (+ key, never committed)<br/>permittedSubtrees: URI spiffe://ai-agent.id.eviden.internal/"]
     end
     subgraph SPIRE["SPIRE server"]
         SCA["SPIRE server CA<br/>UpstreamAuthority 'disk':<br/>cert = intermediate · bundle = ejbca-root"]
-        X509["X509-SVIDs (TTL 1h)<br/>spiffe://lab.internal/agent-client<br/>spiffe://lab.internal/mcp-server"]
+        X509["X509-SVIDs (TTL 1h)<br/>spiffe://ai-agent.id.eviden.internal/agent-client<br/>spiffe://ai-agent.id.eviden.internal/mcp-server"]
         JWTK["JWT-SVID signing keys (TTL 5m)<br/>NOT part of the X.509 chain —<br/>published via bundle endpoint JWKS,<br/>use: jwt-svid (M6)"]
     end
     subgraph BOOT["separate, deliberately outside the EJBCA contract (D-003)"]
         BCA["bootstrap CA (gen-bootstrap.sh)"]
-        AGC["agent cert → x509pop node attestation<br/>agent ID spiffe://lab.internal/spire/agent/x509pop/…"]
+        AGC["agent cert → x509pop node attestation<br/>agent ID spiffe://ai-agent.id.eviden.internal/spire/agent/x509pop/…"]
     end
 
     ROOT --> INT --> SCA --> X509
@@ -114,7 +114,7 @@ flowchart TB
     class JWTK planned;
 ```
 
-M3's exit check (`scripts/check-m3.sh`) verifies a fresh SVID chains to `ejbca-root.pem` **and** runs the negative test: a leaf with URI SAN outside `spiffe://lab.internal/` must be rejected. Whether *each* verifier in the stack (openssl, JDK, …) enforces the URI name constraint is tracked in D-002 — until proven per verifier, the constraint is governance value, not a technical control.
+M3's exit check (`scripts/check-m3.sh`) verifies a fresh SVID chains to `ejbca-root.pem` **and** runs the negative test: a leaf with URI SAN outside `spiffe://ai-agent.id.eviden.internal/` must be rejected. Whether *each* verifier in the stack (openssl, JDK, …) enforces the URI name constraint is tracked in D-002 — until proven per verifier, the constraint is governance value, not a technical control.
 
 ## 4. The three trust stores
 
@@ -128,7 +128,7 @@ flowchart LR
         KC1["Keycloak"]
     end
     subgraph S["Trust root"]
-        BUNDLE["SPIFFE trust bundle (lab.internal)<br/>SPIRE-distributed, EJBCA-chained<br/>MUST NOT be the system store (draft §5.2.3)"]
+        BUNDLE["SPIFFE trust bundle (ai-agent.id.eviden.internal)<br/>SPIRE-distributed, EJBCA-chained<br/>MUST NOT be the system store (draft §5.2.3)"]
         SYS["System / Web PKI store<br/>never validates any SVID"]
         JWKS["Keycloak realm keys (JWKS)<br/>not the SPIFFE bundle; not SPIRE's<br/>OIDC Discovery Provider (unused)"]
     end

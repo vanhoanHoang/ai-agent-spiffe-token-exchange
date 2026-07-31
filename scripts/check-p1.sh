@@ -14,8 +14,8 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
-MCP_EP=https://mcp.lab.internal:8443/mcp
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
+MCP_EP=https://mcp.ai-agent.id.eviden.internal:8443/mcp
 
 bash infra/pki/issue-bundle-endpoint-cert.sh >/dev/null
 (cd infra && docker compose up -d --wait spire-server spire-agent keycloak) >/dev/null || fail "core stack not healthy"
@@ -25,7 +25,7 @@ bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || fail "keycloak setup faile
 (cd infra && docker compose up -d --wait --wait-timeout 240) >/dev/null || fail "stack not healthy"
 
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ "${#USER_TOKEN}" -gt 100 ] || fail "no user token"
 
 ac() { dkr run --rm --label org.lab.workload=agent-client --network "$NET" \
@@ -44,14 +44,14 @@ echo "$out" | grep -q '"serverInfo"' || fail "initialize lacks serverInfo: $out"
 echo "OK: MCP initialize over SVID mTLS"
 
 out=$(TOKEN="$ACCESS" SUBJECT_TOKEN= ac mcp "$MCP_EP" tools/list)
-for t in whoami lab_status read_audit_log; do
+for t in whoami stack_status read_audit_log; do
   echo "$out" | grep -q "\"$t\"" || fail "tools/list missing $t: $out"
 done
-echo "OK: tools/list advertises whoami, lab_status, read_audit_log"
+echo "OK: tools/list advertises whoami, stack_status, read_audit_log"
 
 out=$(TOKEN="$ACCESS" SUBJECT_TOKEN= ac mcp "$MCP_EP" tools/call whoami)
 echo "$out" | grep -q "^HTTP 200" || fail "tools/call whoami: $out"
-echo "$out" | grep -q "spiffe://lab.internal/agent-client" || fail "whoami lacks workload identity: $out"
+echo "$out" | grep -q "spiffe://ai-agent.id.eviden.internal/agent-client" || fail "whoami lacks workload identity: $out"
 echo "OK: tools/call whoami returns both identities"
 
 out=$(TOKEN="$ACCESS" SUBJECT_TOKEN= ac mcp "$MCP_EP" tools/call read_audit_log)
@@ -59,7 +59,7 @@ echo "$out" | grep -q "insufficient_scope" || fail "scope-gated tool was NOT ref
 echo "OK: scope-gated read_audit_log refused (insufficient_scope)"
 
 (cd infra && docker compose logs mcp-server 2>/dev/null) | grep -q "tool=whoami" || fail "server did not log the tool call"
-(cd infra && docker compose logs mcp-server 2>/dev/null) | grep -q "act={sub=spiffe://lab.internal/agent-client}" \
+(cd infra && docker compose logs mcp-server 2>/dev/null) | grep -q "act={sub=spiffe://ai-agent.id.eviden.internal/agent-client}" \
   || fail "act.sub missing from server log"
 echo "OK: server logged tool call with sub + act"
 

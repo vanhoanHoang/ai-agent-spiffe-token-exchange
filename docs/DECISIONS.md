@@ -462,3 +462,63 @@ Date: 2026-07-31 · Milestone: demo track P6.7 · Author: claude-code (user: sin
 Evidence: curl transcript (login route served Spring's page before the fix, `<dc-root>` after); check-p25 + check-p6 runs of record this session.
 
 Consequences: the browser flow is now login page → Keycloak → consent → console, which reads like a product rather than a scrolling demo sheet. The P2.5-era direct links (`/oauth2/authorization/…`) are unchanged — checks and muscle memory keep working. Candidate follow-ups deliberately not done: separate /evidence route, favicon/branding pass, 404 page.
+
+---
+
+## D-026 — P6.8 (user-directed): live session and recorded run are separate views; capture copy scrubbed
+
+Date: 2026-07-31 · Milestone: demo track P6.8 · Author: claude-code (user: recorded artifacts rendering by default "look hardcoded"; wants a history tab; no em dashes, no semicolons, no internal references in visible copy)
+
+1. **The console has a view switcher**: "Live session" (default when signed in) and "Recorded run · date". The live view renders ONLY what is real right now — chat, architecture, request-flow narration, the live X.509 chain — with a dashed "awaiting" note where a captured artifact would otherwise sit. The recorded view carries the full captured anatomy (token cards, custody, call checks, rejections, log) under an explicit provenance banner ("captured by a scripted test client, not your session, every verdict was actually enforced"). Signed out or offline defaults to the recorded view, which keeps the M11 offline exit rendering with zero login.
+2. **Copy rules from the user, now standing for all visible text**: no em dashes, no semicolons, no internal reference codes (D-nnn, P-n, M-n, grant names). Applied to the console templates AND the capture pipeline (`demo/assemble-run.py` note strings held "D-008", "P2/P2.5", "password grant"); the capture was re-run so the shipped JSON is clean. Code comments and docs are exempt, the rendered page is not.
+3. Console suite 41 tests. The old always-rendered anatomy is gone from the live view by test ("logged in: ... NO captured artifacts").
+
+Evidence: check runs of record this session; jargon grep of demo-run.json before/after in transcript.
+
+Consequences: a signed-in viewer can no longer mistake the exhibit for their session. The capture keeps its role as verifiable evidence, now explicitly labeled as such. Future visible-copy edits follow the rule set in point 2.
+
+---
+
+## D-027 — demo track (user-directed): console typography goes corporate sans (Montserrat); Windows mono fallback fixed
+
+Date: 2026-07-31 · Milestone: demo track · Author: claude-code (user: serif headings render "not clean, not continuous" on their Windows screen; showed eviden.com and asked for that style — "corporate")
+
+1. **The classical serif pair is gone.** `@fontsource/cormorant-garamond` + `@fontsource/lora` are replaced by `@fontsource-variable/montserrat` (wght + italic axes) — the same face eviden.com uses (verified by fetching their CSS, not recalled). `--font-heading` and `--font-body` both point to `'Montserrat Variable', 'Segoe UI', Arial, sans-serif`; heading weight is 700. The offline rule is unchanged: fonts are still bundled locally, `check-console.sh`'s no-CDN and local-woff2 assertions still pass.
+2. **Root cause of the original complaint was two-fold**: (a) Cormorant Garamond is a display serif whose hairline strokes drop out below ~24px on low-DPI Windows screens; (b) `--font-mono` was a Mac-only stack (`ui-monospace, 'SF Mono', Menlo`) that fell back to Courier New on Windows for every serial/SAN/validity line. The mono stack now includes `'Cascadia Mono', Consolas` before the generic fallback.
+3. An intermediate step this session (Cormorant for large titles only, Lora elsewhere via a `--font-display` token) was built, verified, then superseded by the full sans switch in the same session; the extra token was removed rather than left dangling. The global heading `letter-spacing: -0.015em` (a serif-era tweak) went with it.
+4. This deviates from the mockup's design language deliberately — the mockup remains the layout/structure reference, but its type palette is no longer the visual target.
+
+Evidence: eviden.com stylesheet references `Montserrat-VariableFont_wght.woff2`; lint + 41/41 tests + production build green after the swap; dist media/ holds 10 Montserrat woff2 subsets and zero Lora/Cormorant files.
+
+Consequences: token-only change surface (tokens.css, styles.css imports, two component overrides removed) — no template edits. Future font taste changes stay one-token edits. `package.json` dependency set changed accordingly.
+
+---
+
+## D-028 — demo track (user-directed): trust domain, realm, and PKI rebranded — "lab" removed from every viewer-visible surface
+
+Date: 2026-07-31 · Milestone: demo track · Author: claude-code (user: "I dont like lab", chose ai-agent.id.eviden.internal; then "remove lab everywhere")
+
+1. **Trust domain**: `spiffe://lab.internal` → `spiffe://ai-agent.id.eviden.internal` (user picked from candidates; hierarchy reads org → id platform → environment, workload specifics stay in the path). Swept across 51 tracked files: SPIRE confs, registration, Keycloak setup, EJBCA setup (name constraint now `uniformResourceIdentifier:ai-agent.id.eviden.internal`), MCP server + agent-client code/config, all check scripts, docs, diagrams, console. The MCP hostname/audience moved with it: `https://mcp.ai-agent.id.eviden.internal:8443`.
+2. **Keycloak realm**: `lab` → `ai-agents` (issuer `http://keycloak:8080/realms/ai-agents`). Keycloak has no volume, so the realm rebuild is free on reset; alice's lastName Lab → Demo.
+3. **PKI rebrand — cold rebuild required**: root is now `CN=Eviden Root CA,O=eviden` (EJBCA CA name EvidenRoot), intermediate `CN=SPIRE Intermediate CA,O=eviden`, SPIRE ca_subject org `eviden`. DN changes cannot be renewed in place, so the EJBCA volume is destroyed and the hierarchy re-created (`reset.sh --cold`); old contract files under infra/pki/ are deleted first (setup-ejbca.sh early-exits if they exist).
+4. **MCP tool rename**: `lab_status` → `stack_status` (tool names are viewer-visible in the demo chat and tools/list; check-p1 updated).
+5. **Deliberately kept**: Java packages `internal.lab.*`, compose project name `spiffe-mcp-lab`, docker network `lab` — never rendered in the UI; renaming the compose project would orphan all volumes. `docs/DECISIONS.md` history and `mockup/` are untouched; both captured demo-run.json files are NOT hand-edited — the capture is regenerated from the migrated stack (until then the console's fail-closed parser rejects the old capture by design, and its schema/validator now pin the new trust domain).
+6. CLAUDE.md's trust-domain line updated as part of this decision (not silently).
+
+Evidence: `git grep` residual sweeps clean (escape-tolerant pattern, exclusions as above); console lint + tests + build green post-sweep; shell syntax checks pass on all swept scripts.
+
+Consequences: milestone/check scripts assert the new domain end-to-end. Migration runbook: delete infra/pki/*.pem → rebuild images → `demo/reset.sh --cold` (human runs; wipes SPIRE+EJBCA+ollama volumes, re-issues hierarchy, re-registers, rebuilds realm) → re-capture demo run → full check suite. The name-constraints milestone evidence (JDK rejection test) must be re-verified against the new constraint.
+
+---
+
+## D-029 — post-migration check corrections: m2 verified against a polluted bundle; m4 transport was stale since D-006
+
+Date: 2026-08-01 · Milestone: demo track · Author: claude-code (found by running the FULL suite after the D-028 migration)
+
+1. **check-m2 was validating the leaf directly against the trust bundle** and only passed because the old datastore's bundle still contained a legacy self-signed SPIRE CA anchor. The fresh post-migration bundle correctly holds ONLY the upstream root (Eviden Root CA), which exposed the bug. Fixed to proper X509-SVID chain validation: leaf verified with the SVID's delivered intermediates as untrusted links against the bundle anchor. Strictly stronger; no assertion removed.
+2. **check-m4 still spoke plain HTTP** from before D-006 made the server mTLS-only (client-auth: need); Tomcat answers plain HTTP on a TLS port with 400, and check-m5 explicitly asserts the no-client-cert handshake is REFUSED — so m4 could not have passed since M5; it simply had not been re-run. Fixed by presenting the fetched agent-client SVID for every probe (curl --cert/--key, -k because the server cert is an SVID, not a localhost cert). The four OAuth assertions (401+resource_metadata, RFC 9728 metadata, wrong-aud rejection, right-aud control) are byte-for-byte the same.
+3. Also fixed during the migration run: setup-ejbca.sh cleanup of key files copied into the container now runs as root (docker compose cp writes root-owned files; the ejbca user's rm failed and set -e killed the cold reset mid-hierarchy).
+
+Evidence: full suite scoreboard in transcript (m2/m4 red pre-fix, green post-fix; failure outputs quoted); fresh bundle shown to contain exactly one anchor.
+
+Consequences: milestone checks are now all runnable against the evolved stack, not just the milestone-era stack. p2/p25/p3/p6 additionally require a clean working copy of acceptance.sh, so they gate on the migration commit.

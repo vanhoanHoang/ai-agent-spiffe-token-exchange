@@ -84,7 +84,7 @@ services:
       start_period: 40s                     # X509Source blocks until an SVID is issued
     networks:
       lab:
-        aliases: [mcp.lab.internal]         # own hostname — MCP clients resolve well-known against root domain
+        aliases: [mcp.ai-agent.id.eviden.internal]         # own hostname — MCP clients resolve well-known against root domain
 
   # Built for ad-hoc runs by checks/acceptance (docker run ...-agent-client);
   # never started as a long-running service.
@@ -113,7 +113,7 @@ services:
     networks: [lab]
 
   # P2.5: the same agent workload, serving the browser login + chat page.
-  # Same docker label => same SPIFFE ID (it IS spiffe://lab.internal/agent-client);
+  # Same docker label => same SPIFFE ID (it IS spiffe://ai-agent.id.eviden.internal/agent-client);
   # alice's token lives in the server-side session, the browser gets a cookie.
   agent-web:
     profiles: [demo]

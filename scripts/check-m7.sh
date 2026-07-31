@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # M7 exit criterion (BUILD-PLAN M7): decoded exchanged access token shows
-# sub = human, act.sub = spiffe://lab.internal/..., aud = MCP server; the MCP
+# sub = human, act.sub = spiffe://ai-agent.id.eviden.internal/..., aud = MCP server; the MCP
 # server logs both on every call. Plus: subject token lacking the requester in
 # its aud is rejected (StandardTokenExchangeProvider rule).
 set -euo pipefail
@@ -12,8 +12,8 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
-RESOURCE_ID="https://mcp.lab.internal:8443"
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
+RESOURCE_ID="https://mcp.ai-agent.id.eviden.internal:8443"
 
 decode() { # $1 = jwt -> payload json
   echo "$1" | cut -d. -f2 | tr '_-' '/+' | { p=$(cat); pad=$(( (4 - ${#p} % 4) % 4 )); printf '%s' "$p"; [ $pad -gt 0 ] && printf '=%.0s' $(seq 1 $pad); } | openssl base64 -d -A 2>/dev/null
@@ -28,7 +28,7 @@ bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || fail "spiffe idp/exchange 
 
 # -- subject token: the human authenticates ---------------------------------
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ -n "$USER_TOKEN" ] && [ "${#USER_TOKEN}" -gt 100 ] || fail "could not obtain user token"
 ALICE_SUB=$(decode "$USER_TOKEN" | grep -o '"sub":"[^"]*"' | head -1 | cut -d'"' -f4)
 [ -n "$ALICE_SUB" ] || fail "cannot read alice sub"
@@ -43,24 +43,24 @@ EXCHANGED=$(echo "$out" | grep -o '"access_token":"[^"]*"' | head -1 | cut -d'"'
 payload=$(decode "$EXCHANGED")
 
 echo "$payload" | grep -q "\"sub\":\"$ALICE_SUB\"" || fail "exchanged sub != alice: $payload"
-echo "$payload" | grep -q '"act":{"sub":"spiffe://lab.internal/agent-client"}' || fail "act.sub missing/wrong: $payload"
+echo "$payload" | grep -q '"act":{"sub":"spiffe://ai-agent.id.eviden.internal/agent-client"}' || fail "act.sub missing/wrong: $payload"
 echo "$payload" | grep -q "$RESOURCE_ID" || fail "aud lacks $RESOURCE_ID: $payload"
-echo "OK: exchanged token — sub=alice, act.sub=spiffe://lab.internal/agent-client, aud=mcp"
+echo "OK: exchanged token — sub=alice, act.sub=spiffe://ai-agent.id.eviden.internal/agent-client, aud=mcp"
 
 # -- the exchanged token works at the MCP server over SVID mTLS -------------
 out=$(dkr run --rm --label org.lab.workload=agent-client --network "$NET" \
   -v "$SOCK_VOL":/tmp/spire-agent/public:ro \
   -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spire-agent/public/api.sock \
-  -e TOKEN="$EXCHANGED" "$IMG" "https://mcp.lab.internal:8443/api/whoami" 2>&1) || fail "mcp call errored: $out"
+  -e TOKEN="$EXCHANGED" "$IMG" "https://mcp.ai-agent.id.eviden.internal:8443/api/whoami" 2>&1) || fail "mcp call errored: $out"
 echo "$out" | grep -q "^HTTP 200" || fail "mcp call: want 200, got: $out"
-echo "$out" | grep -q '"act":{"sub":"spiffe://lab.internal/agent-client"}' || fail "mcp response lacks act: $out"
-(cd infra && docker compose logs mcp-server 2>/dev/null | grep "call sub=" | tail -1 | grep -q "act={sub=spiffe://lab.internal/agent-client}") \
+echo "$out" | grep -q '"act":{"sub":"spiffe://ai-agent.id.eviden.internal/agent-client"}' || fail "mcp response lacks act: $out"
+(cd infra && docker compose logs mcp-server 2>/dev/null | grep "call sub=" | tail -1 | grep -q "act={sub=spiffe://ai-agent.id.eviden.internal/agent-client}") \
   || fail "mcp-server log does not show act.sub"
 echo "OK: MCP call 200; server logged sub + act.sub"
 
 # -- negative: subject token without requester in aud -> rejected -----------
 WRONG_SUBJ=$(curl -s -d grant_type=client_credentials -d client_id=wrong-aud-client -d client_secret=wrong-aud-secret \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 out=$(dkr run --rm --label org.lab.workload=agent-client --network "$NET" \
   -v "$SOCK_VOL":/tmp/spire-agent/public:ro \
   -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spire-agent/public/api.sock \

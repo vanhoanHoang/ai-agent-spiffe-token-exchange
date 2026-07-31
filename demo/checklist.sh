@@ -28,7 +28,7 @@ docker exec spiffe-mcp-lab-ollama-1 ollama list 2>/dev/null | grep -q "qwen3.5:4
   && ok "demo model qwen3.5:4b present" || bad "demo model" "run infra/ollama/pull-model.sh"
 
 # 4. Ports answering from the host.
-curl -s -o /dev/null --max-time 5 http://localhost:8080/realms/lab/.well-known/openid-configuration \
+curl -s -o /dev/null --max-time 5 http://localhost:8080/realms/ai-agents/.well-known/openid-configuration \
   && ok "keycloak :8080" || bad "keycloak :8080"
 curl -sk -o /dev/null --max-time 5 https://localhost:8443 2>/dev/null; [ $? -ne 7 ] \
   && ok "mcp-server :8443 (TLS answering)" || bad "mcp-server :8443"

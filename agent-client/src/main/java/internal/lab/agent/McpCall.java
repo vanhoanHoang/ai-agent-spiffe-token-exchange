@@ -23,7 +23,7 @@ import io.spiffe.workloadapi.X509Source;
  */
 public final class McpCall {
 
-    private static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://lab.internal/mcp-server");
+    private static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://ai-agent.id.eviden.internal/mcp-server");
 
     private McpCall() {
     }
@@ -35,7 +35,7 @@ public final class McpCall {
             // client_id is the workload's own SPIFFE ID, taken from its JWT-SVID.
             TokenRequest.run(
                     args[1],
-                    System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/lab"),
+                    System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/ai-agents"),
                     System.getenv().get("SUBJECT_TOKEN"));
             return;
         }

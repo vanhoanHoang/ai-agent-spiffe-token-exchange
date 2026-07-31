@@ -2,7 +2,7 @@
 # M5 exit criterion (BUILD-PLAN M5):
 #   MCP server accepts a call from the allowlisted SPIFFE ID over mTLS, and
 #   rejects a valid-token call from a workload whose SPIFFE ID is not allowlisted.
-# Enforcement split (ARCHITECTURE): handshake = valid lab.internal SVID required;
+# Enforcement split (ARCHITECTURE): handshake = valid ai-agent.id.eviden.internal SVID required;
 # app filter = allowlist -> 403. Plus: no-client-cert connection is refused.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-URL=https://mcp.lab.internal:8443/api/whoami
+URL=https://mcp.ai-agent.id.eviden.internal:8443/api/whoami
 
 # Order matters: registration entries must exist before mcp-server starts,
 # because its X509Source blocks on SVID availability at boot.
@@ -23,7 +23,7 @@ bash infra/keycloak/setup-realm.sh >/dev/null
 (cd infra && docker compose up -d --wait --wait-timeout 240) >/dev/null || fail "mcp-server not healthy"
 
 TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ -n "$TOKEN" ] && [ "${#TOKEN}" -gt 100 ] || fail "could not obtain user token"
 
 call() { # $1=workload label; runs agent-client image attested as that workload

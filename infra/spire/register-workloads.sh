@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent SPIRE registration entries for the two lab workloads (M2).
-# Parent = the agent's x509pop SPIFFE ID: spiffe://lab.internal/spire/agent/x509pop/<fp>
+# Parent = the agent's x509pop SPIFFE ID: spiffe://ai-agent.id.eviden.internal/spire/agent/x509pop/<fp>
 # where <fp> is the SHA1 of the DER of the agent's bootstrap identity cert
 # (specs/spire/plugin_server_nodeattestor_x509pop.md). Derived, never hardcoded —
 # regenerating the bootstrap PKI changes it.
@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 
 [ -f bootstrap/agent.crt.pem ] || { echo "missing bootstrap PKI — run gen-bootstrap.sh"; exit 1; }
 FP=$(openssl x509 -in bootstrap/agent.crt.pem -outform DER | sha1sum | cut -d' ' -f1)
-PARENT="spiffe://lab.internal/spire/agent/x509pop/${FP}"
+PARENT="spiffe://ai-agent.id.eviden.internal/spire/agent/x509pop/${FP}"
 
 srv() { (cd .. && docker compose exec -T spire-server /opt/spire/bin/spire-server "$@"); }
 
@@ -25,7 +25,7 @@ has_entry() {
 
 # test-agent: permanent fixture for the D-009 act↔peer binding rejection (M9)
 for w in agent-client mcp-server test-agent; do
-  ID="spiffe://lab.internal/${w}"
+  ID="spiffe://ai-agent.id.eviden.internal/${w}"
   if has_entry "$ID"; then
     echo "entry exists: $ID"
   else

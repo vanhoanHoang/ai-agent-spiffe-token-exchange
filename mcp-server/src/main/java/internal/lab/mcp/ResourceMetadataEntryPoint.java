@@ -11,7 +11,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 /**
  * Wraps Spring's bearer-token entry point and appends the RFC 9728 §5.1
  * {@code resource_metadata} parameter to WWW-Authenticate, e.g.
- * {@code Bearer resource_metadata="https://mcp.lab.internal:8443/.well-known/oauth-protected-resource"}.
+ * {@code Bearer resource_metadata="https://mcp.ai-agent.id.eviden.internal:8443/.well-known/oauth-protected-resource"}.
  */
 public class ResourceMetadataEntryPoint implements AuthenticationEntryPoint {
 

@@ -17,9 +17,9 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
-MCP_EP=https://mcp.lab.internal:8443/mcp
-AGENT_ID=spiffe://lab.internal/agent-client
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
+MCP_EP=https://mcp.ai-agent.id.eviden.internal:8443/mcp
+AGENT_ID=spiffe://ai-agent.id.eviden.internal/agent-client
 
 # ---- 1. Containment grep (static; runs before anything needs docker) --------
 # Provider-neutral spring-ai packages are allowed everywhere; anything else
@@ -50,7 +50,7 @@ bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || fail "keycloak setup faile
 bash infra/ollama/pull-model.sh >/dev/null || fail "demo model pull failed"
 
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ "${#USER_TOKEN}" -gt 100 ] || fail "no user token"
 
 # "sub = alice" in the log means: the exchanged token's sub equals the sub of

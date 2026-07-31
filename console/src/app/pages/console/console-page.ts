@@ -63,6 +63,18 @@ export class ConsolePage {
   protected readonly liveSvid = signal<LiveSvid | null>(null);
   protected readonly liveUser = this.session.user;
 
+  /** P6.8: live session vs the captured history. Nothing recorded renders in
+   *  the live view — captured artifacts live behind the explicit tab, under a
+   *  provenance banner, so they can never read as the user's own session. */
+  private readonly viewChoice = signal<'live' | 'recorded' | null>(null);
+  protected readonly view = computed<'live' | 'recorded'>(
+    () => this.viewChoice() ?? (this.liveUser() !== null ? 'live' : 'recorded'),
+  );
+
+  protected setView(v: 'live' | 'recorded'): void {
+    this.viewChoice.set(v);
+  }
+
   protected readonly stages = STAGES;
   protected readonly stage = computed(
     () => STAGES.find((s) => s.id === this.stageId()) ?? STAGES[0],

@@ -29,7 +29,7 @@ async function renderPage(live: LiveState = 'offline') {
           chat: () => Promise.resolve({}),
           svid: () =>
             Promise.resolve({
-              spiffeId: 'spiffe://lab.internal/agent-client',
+              spiffeId: 'spiffe://ai-agent.id.eviden.internal/agent-client',
               chain: [
                 {
                   role: 'leaf',
@@ -38,7 +38,7 @@ async function renderPage(live: LiveState = 'offline') {
                   serial: 'ab12',
                   notBefore: '2026-07-31T10:00:00Z',
                   notAfter: '2026-07-31T11:00:00Z',
-                  uriSans: ['spiffe://lab.internal/agent-client'],
+                  uriSans: ['spiffe://ai-agent.id.eviden.internal/agent-client'],
                   sha256: 'deadbeef'.repeat(8),
                 },
               ],
@@ -60,7 +60,7 @@ describe('ConsolePage', () => {
     const fixture = await renderPage();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain('Two identities, one call');
-    expect(el.textContent).toContain('spiffe://lab.internal');
+    expect(el.textContent).toContain('spiffe://ai-agent.id.eviden.internal');
     expect(el.querySelectorAll('dc-step-rail').length).toBe(1);
     expect(el.querySelectorAll('dc-rejection-grid').length).toBe(1);
   });
@@ -114,28 +114,48 @@ describe('ConsolePage', () => {
     expect(el.querySelector('dc-run-header')).toBeFalsy();
   });
 
-  it('anonymous (guest mode): shows the recorded-evidence note with a sign-in link', async () => {
+  it('anonymous: defaults to the recorded view with the provenance banner', async () => {
     mockFetch(demoRunFixture());
     const fixture = await renderPage('anonymous');
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.guest-note')?.textContent).toContain('Sign in');
+    expect(el.querySelector('.provenance')?.textContent).toContain('not your session');
     expect(el.querySelector('dc-live-chat')).toBeFalsy();
   });
 
-  it('offline: no live panel and no guest note', async () => {
+  it('anonymous: the Live tab asks for sign-in instead of showing recorded data', async () => {
     mockFetch(demoRunFixture());
-    const fixture = await renderPage('offline');
+    const fixture = await renderPage('anonymous');
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('dc-live-chat')).toBeFalsy();
-    expect(el.querySelector('.guest-note')).toBeFalsy();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.vtab'))
+      .find((b) => b.textContent?.includes('Live session'))
+      ?.click();
+    await fixture.whenStable();
+    expect(el.querySelector('.guest-note')?.textContent).toContain('Sign in');
+    expect(el.querySelector('dc-token-card')).toBeFalsy();
+    expect(el.querySelector('.provenance')).toBeFalsy();
   });
 
-  it('logged in: shows the live chat panel', async () => {
+  it('logged in: defaults to the live view with chat and NO captured artifacts', async () => {
     mockFetch(demoRunFixture());
     const fixture = await renderPage({ username: 'alice', scopes: ['openid', 'profile'] });
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('dc-live-chat')?.textContent).toContain('alice');
-    expect(el.querySelector('.guest-note')).toBeFalsy();
+    expect(el.querySelector('dc-token-card')).toBeFalsy();
+    expect(el.querySelector('.awaiting')).toBeTruthy();
+    expect(el.querySelector('.provenance')).toBeFalsy();
+  });
+
+  it('logged in: switching to the recorded tab shows the captured run under the banner', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderPage({ username: 'alice', scopes: ['openid'] });
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.vtab'))
+      .find((b) => b.textContent?.includes('Recorded run'))
+      ?.click();
+    await fixture.whenStable();
+    expect(el.querySelector('.provenance')).toBeTruthy();
+    expect(el.querySelector('dc-token-card')?.textContent).toContain("Alice's login token");
+    expect(el.querySelector('dc-live-chat')).toBeFalsy();
   });
 
   it('live: opening the SVID stage shows the current certificate chain', async () => {
@@ -149,7 +169,7 @@ describe('ConsolePage', () => {
     await fixture.whenStable();
     await fixture.whenStable();
     expect(el.querySelector('dc-cert-panel')?.textContent).toContain('serial ab12');
-    expect(el.querySelector('dc-custody-panel')).toBeTruthy();
+    expect(el.querySelector('dc-custody-panel')).toBeFalsy();
   });
 
   it('clicking a live hop opens the matching stage detail', async () => {
@@ -160,7 +180,8 @@ describe('ConsolePage', () => {
       .find((b) => b.textContent?.includes('02'))
       ?.click();
     await fixture.whenStable();
+    await fixture.whenStable();
     expect(el.querySelector('.stage h3')?.textContent).toContain('Agent fetches SVIDs');
-    expect(el.querySelector('dc-custody-panel')).toBeTruthy();
+    expect(el.querySelector('dc-cert-panel')).toBeTruthy();
   });
 });

@@ -27,7 +27,7 @@ import io.spiffe.workloadapi.X509Source;
  */
 final class McpProbe {
 
-    private static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://lab.internal/mcp-server");
+    private static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://ai-agent.id.eviden.internal/mcp-server");
 
     private McpProbe() {
     }

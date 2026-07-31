@@ -13,7 +13,7 @@ KC=http://localhost:8080
 NET=spiffe-mcp-lab_lab
 SOCK_VOL=spiffe-mcp-lab_spire-agent-socket
 IMG=spiffe-mcp-lab-agent-client
-TOKEN_EP=http://keycloak:8080/realms/lab/protocol/openid-connect/token
+TOKEN_EP=http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
 PROMPT1="Use the whoami tool, then state which workload and which human you are acting for."
 PROMPT2="Read the audit log and summarize the most recent entries."
 
@@ -29,7 +29,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
-  "$KC/realms/lab/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+  "$KC/realms/ai-agents/protocol/openid-connect/token" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
 [ "${#USER_TOKEN}" -gt 100 ] || fail "no user token"
 printf '%s' "$USER_TOKEN" > "$WORK/subject.jwt"
 

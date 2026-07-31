@@ -76,7 +76,7 @@ final class Der {
     /**
      * NameConstraints ::= SEQUENCE { permitted [0], excluded [1] }, each a
      * SEQUENCE of GeneralSubtree { base GeneralName ... }. Rendered in the
-     * openssl style: "Permitted: URI:lab.internal".
+     * openssl style: "Permitted: URI:ai-agent.id.eviden.internal".
      */
     static String nameConstraints(byte[] extensionValue) {
         List<String> parts = new ArrayList<>();
