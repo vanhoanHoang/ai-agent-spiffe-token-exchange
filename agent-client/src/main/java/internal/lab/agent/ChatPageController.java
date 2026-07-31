@@ -3,6 +3,7 @@ package internal.lab.agent;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,9 +38,16 @@ public class ChatPageController {
         this.loop = loop;
     }
 
+    /** Refreshing after a send lands here as GET — back to the page, no 405. */
+    @GetMapping("/chat")
+    public String chatGet() {
+        return "redirect:/";
+    }
+
     @GetMapping(value = "/", produces = "text/html")
     @ResponseBody
-    public String home(@AuthenticationPrincipal OAuth2User user, HttpSession session, CsrfToken csrf) {
+    public String home(@AuthenticationPrincipal OAuth2User user, HttpServletRequest request, CsrfToken csrf) {
+        HttpSession session = request.getSession(true);
         StringBuilder h = page();
         if (user == null) {
             h.append("<h1>Lab agent</h1>")
@@ -71,7 +79,10 @@ public class ChatPageController {
     @PostMapping("/chat")
     public String chat(@RequestParam("message") String message,
             @RegisteredOAuth2AuthorizedClient OAuth2AuthorizedClient client,
-            HttpSession session) {
+            HttpServletRequest request) {
+        // getSession(true) at use time: a session invalidated by a restart or
+        // logout must yield a fresh one, never the "already invalidated" 500.
+        HttpSession session = request.getSession(true);
         // Subject token = alice's session token, fresh from the login this
         // browser performed. Fail-closed inside: no token, no MCP call.
         String question = message.strip();
