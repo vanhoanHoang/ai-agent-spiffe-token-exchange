@@ -1,0 +1,16 @@
+<div class="grid">
+  @for (r of cards(); track r.id) {
+    <div class="card" [class.failed]="r.failed">
+      <div class="head">
+        <span class="name">{{ r.id }}</span>
+        <span class="verdict">{{ r.failed ? '⚠ ' + r.verdict : '✕ ' + r.verdict }}</span>
+      </div>
+      <p class="story">{{ r.story }}</p>
+      <div class="mech">
+        <span class="mech-label">Stopped by</span>
+        <span class="mech-value">{{ r.mechanism }}</span>
+      </div>
+      <div class="lesson">{{ r.lesson }}</div>
+    </div>
+  }
+</div>

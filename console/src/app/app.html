@@ -1,0 +1,83 @@
+@if (error(); as err) {
+  <div class="error-state" role="alert">
+    <h2>Cannot render this capture</h2>
+    <p>{{ err }}</p>
+    <p class="error-hint">
+      The console renders only a well-formed, redacted DEMO_RUN capture — it
+      refuses to show a partial or tampered run.
+    </p>
+  </div>
+} @else if (run(); as r) {
+  <dc-run-header [run]="r" />
+
+  <div class="legend">
+    <span class="legend-label">Colour language</span>
+    <span class="legend-item"><span class="swatch human"></span> Human — <em>sub</em>, OIDC, Keycloak</span>
+    <span class="legend-item"><span class="swatch workload"></span> Workload — SPIFFE, SVID, mTLS</span>
+    <span class="legend-item"><span class="swatch bridge"></span> The bridge — token exchange, <em>act</em></span>
+  </div>
+
+  <main>
+    <section>
+      <div class="section-head">
+        <h2>The happy path</h2>
+        <span class="rule"></span>
+        <span class="kicker muted">Click a step</span>
+      </div>
+      <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
+    </section>
+
+    <section class="stage" [attr.data-role]="stage().role">
+      <div class="stage-head">
+        <span class="stage-tag">{{ stage().kindLabel }}</span>
+        <h3>{{ stage().title }}</h3>
+      </div>
+      <p class="narration">{{ stage().narration }}</p>
+      <p class="proves"><em>What is proven here —</em> {{ stage().proves }}</p>
+
+      <div class="artifacts">
+        @switch (stage().id) {
+          @case ('login') {
+            @if (subjectToken(); as t) {
+              <dc-token-card [token]="t" role="human" kicker="Access token · human only" title="Alice's login token" />
+            }
+          }
+          @case ('svid') {
+            <dc-custody-panel [hops]="hops()" [custody]="r.chain_of_custody" />
+          }
+          @case ('exchange') {
+            @if (exchangedToken(); as t) {
+              <dc-token-card [token]="t" role="bridge" kicker="Exchanged token · both identities" title="Delegation token" />
+            }
+          }
+          @case ('call') {
+            <dc-call-checks-panel [checks]="checks()" [logLines]="callLog()" />
+          }
+          @case ('chat') {
+            <dc-chat-panel [steps]="chatSteps()" />
+          }
+        }
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Six ways in, six ways stopped</h2>
+        <span class="rule"></span>
+        <span class="kicker ok">Every rejection is the design working</span>
+      </div>
+      <dc-rejection-grid [cards]="rejections()" />
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>MCP server log</h2>
+        <span class="rule"></span>
+        <span class="kicker muted">Recorded · {{ r.captured_at }}</span>
+      </div>
+      <dc-log-panel [lines]="r.log_tail" />
+    </section>
+  </main>
+} @else {
+  <p class="loading">Loading capture…</p>
+}

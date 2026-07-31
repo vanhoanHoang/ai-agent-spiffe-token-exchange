@@ -1,0 +1,65 @@
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+.ctl {
+  font: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+}
+
+.ctl:hover {
+  border-color: var(--text-muted);
+}
+
+.counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.screen {
+  background: var(--surface-ink);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 150px;
+  overflow-x: auto;
+}
+
+.tok {
+  color: var(--log-text);
+  white-space: pre-wrap;
+}
+
+.tok.sub {
+  color: var(--log-text-sub);
+  font-weight: 600;
+}
+
+.tok.act {
+  color: var(--log-text-act);
+  font-weight: 600;
+}
+
+.tok.peer {
+  color: var(--log-text-peer);
+  font-weight: 600;
+}
+
+.tok.reject {
+  color: var(--log-text-reject);
+}

@@ -1,0 +1,20 @@
+<div class="rail">
+  @for (s of stages(); track s.id) {
+    <button
+      type="button"
+      class="step"
+      [class.on]="s.id === selected()"
+      [attr.data-role]="s.role"
+      (click)="picked.emit(s.id)"
+    >
+      <span class="bar">
+        <span class="num">{{ s.num }}</span>
+        <span class="kind">{{ s.kindLabel }}</span>
+      </span>
+      <span class="body">
+        <span class="title">{{ s.title }}</span>
+        <span class="hint">{{ s.hint }}</span>
+      </span>
+    </button>
+  }
+</div>

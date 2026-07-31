@@ -1,0 +1,22 @@
+<header>
+  <div class="inner">
+    <div>
+      <div class="kicker">Recorded run · read-only console</div>
+      <h1>Two identities, one call</h1>
+    </div>
+    <div class="chips">
+      <div class="chip teal">
+        <span class="chip-label">Trust domain</span>
+        <span class="chip-value">{{ run().trust_domain }}</span>
+      </div>
+      <div class="chip blue">
+        <span class="chip-label">Issuer</span>
+        <span class="chip-value">{{ issuer() }}</span>
+      </div>
+      <div class="chip orange">
+        <span class="chip-label">Resource</span>
+        <span class="chip-value">{{ run().actors.mcp_server.resource_id }}</span>
+      </div>
+    </div>
+  </div>
+</header>

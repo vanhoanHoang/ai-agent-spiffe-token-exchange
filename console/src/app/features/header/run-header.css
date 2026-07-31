@@ -1,0 +1,79 @@
+header {
+  background: var(--surface-ink);
+  color: var(--text-on-ink);
+  padding: 22px var(--space-8);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  max-width: 1560px;
+  margin: 0 auto;
+}
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--kicker-orange);
+}
+
+h1 {
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 1.05;
+  margin: 5px 0 0;
+  letter-spacing: 0;
+}
+
+.chips {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 3px solid;
+  padding-left: 11px;
+}
+
+.chip.teal {
+  border-color: var(--chip-teal);
+}
+
+.chip.blue {
+  border-color: var(--chip-blue);
+}
+
+.chip.orange {
+  border-color: var(--id-bridge);
+}
+
+.chip-label {
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.chip.teal .chip-label {
+  color: var(--chip-teal-soft);
+}
+
+.chip.blue .chip-label {
+  color: var(--chip-blue-soft);
+}
+
+.chip.orange .chip-label {
+  color: var(--chip-orange-soft);
+}
+
+.chip-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+}

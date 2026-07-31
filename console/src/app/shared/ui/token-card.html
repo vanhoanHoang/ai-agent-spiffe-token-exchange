@@ -1,0 +1,24 @@
+<div class="card" [attr.data-role]="role()">
+  <div class="bar">
+    <span class="kicker">{{ kicker() }}</span>
+    <button type="button" class="toggle" (click)="toggle()">
+      {{ expanded() ? 'show key claims −' : 'show all claims +' }}
+    </button>
+  </div>
+  <div class="content">
+    <div class="head">
+      <span class="title">{{ title() }}</span>
+      <span class="alg">{{ header() }}</span>
+    </div>
+    <div class="claims">
+      @for (c of rows(); track c.k) {
+        <div class="row" [class.hot]="c.role !== 'plain'" [attr.data-role]="c.role">
+          <span class="key">{{ c.k }}</span>
+          <span class="val">{{ c.v }}</span>
+        </div>
+      }
+    </div>
+    <div class="sig">signature: …redacted…</div>
+    <p class="note">{{ token().description }}</p>
+  </div>
+</div>

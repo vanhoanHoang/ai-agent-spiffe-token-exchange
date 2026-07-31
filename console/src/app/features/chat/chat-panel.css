@@ -1,0 +1,46 @@
+.panel {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bar {
+  background: var(--surface-ink);
+  color: var(--text-on-ink);
+  padding: 7px 16px;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.label {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.msg.deny .label {
+  color: var(--verdict-deny);
+}
+
+.text {
+  font-size: 16px;
+  line-height: 1.45;
+  text-wrap: pretty;
+  white-space: pre-wrap;
+}
+
+.msg.deny .text {
+  border-left: 3px solid var(--verdict-deny);
+  padding-left: 11px;
+}

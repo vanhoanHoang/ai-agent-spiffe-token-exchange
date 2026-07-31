@@ -300,3 +300,19 @@ Proven by `scripts/check-p25.sh` (green):
 6. Scripting findings: Keycloak 26.6.0 renders the consent form action **relative** (qualify against the issuer), and the consent POST needs the `accept` param present (value irrelevant) plus the hidden `code` field replayed.
 
 Consequences: the on-stage story is now end-to-end human: login → consent → chat → server log with sub+act. P5's checklist gains the hosts-file line; the capture's login step can be upgraded to kind=consent later without schema change (kind enum already includes it).
+
+---
+
+## D-015 — M11 P4: Angular 22 console renders the captured run offline; conventions enforced by lint
+
+Date: 2026-07-31 · Milestone: M11 (demo track) · Author: claude-code
+
+Proven by `scripts/check-console.sh` (green):
+1. **The console** (`console/`, Angular CLI 22.1.2 / core 22.1 per the VERSIONS pin): standalone components, signals, zoneless (the v22 scaffold default), OnPush everywhere, selector prefix `dc`. It renders `demo-run.json` (DEMO_RUN v1, D-013) **offline** — the check asserts no external origin in the bundle, fonts shipped locally, and the capture present. Fail-closed input: `parseDemoRun` rejects malformed captures, wrong trust domain, unredacted signatures, or ANY JWT-shaped string, and the app then shows an error state — never a partial run (tested).
+2. **Design system**: tokens extracted from the mockup's "Classical" system into `src/styles/tokens.css` (primitive + semantic layers); components consume semantic tokens only. The mockup's colour language is semantic (human `#17557f`, workload `#12706a`, bridge `#e0552b`) and encoded as `--id-*` tokens. CONVENTIONS-ANGULAR's earlier "dark-first" guess was corrected against the actual mockup (light, serif; the ink-navy band is header/log only).
+3. **Presentation copy vs captured fact**: narration/stories live in `core/narrative.ts` (authored, from the approved mockup); every verdict, claim, identity, and log line comes from the capture. A rejection card can show "NOT REFUSED" (alarm styling) only if the capture says the stack failed to deny — tested with a negative fixture.
+4. **Conventions are enforced, not advisory**: eslint flat config carries max-lines 300 / max-lines-per-function 40 / complexity 10 / OnPush-required / `dc` selectors; the check runs it as a blocking gate. The rules bit their own author twice during this build (parse complexity, fixture length) — refactored, not weakened.
+5. **Dependencies beyond the scaffold** (recorded per CONVENTIONS-ANGULAR): `@fontsource/cormorant-garamond` + `@fontsource/lora` (offline fonts), `eslint`/`angular-eslint`/`typescript-eslint` (the enforcement mechanism). npm 11's `allowScripts` approvals for `@parcel/watcher`/`esbuild` are pinned in package.json.
+6. **Windows path wart**: the repo path contains `&`, which breaks npm's cmd `.bin` shims; package.json scripts call the node entry points directly (`node node_modules/@angular/cli/bin/ng.js ...`). Also: the Angular build cache does not survive a fresh `node_modules` — the check clears `.angular` after `npm ci`.
+
+Consequences: BUILD-PLAN M11 exit is met (complete run rendered offline from captured JSON; killing it changes nothing — it is static files). P5 remains: stage resilience + DEMO.md narration. Re-capture (`demo/capture-run.sh`) then `cp demo/demo-run.json console/public/` refreshes what the console shows.

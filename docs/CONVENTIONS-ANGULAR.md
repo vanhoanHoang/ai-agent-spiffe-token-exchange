@@ -40,7 +40,7 @@ The console has exactly **one input**: the captured `DEMO_RUN` JSON (schema owne
   - **primitive** (`--color-teal-500`, `--space-4`, `--font-mono`) — raw values, defined once;
   - **semantic** (`--surface-panel`, `--text-verdict-pass`, `--text-verdict-fail`, `--border-custody`) — what components actually use.
 - Components consume **semantic tokens only**. A hex color, px spacing, or font name inside a component style is a review-blocking defect. New visual values enter through the token files or not at all.
-- Dark-first (the mockup is dark); if a light theme ever exists it is a token swap, not component edits.
+- The mockup's system is **"Classical"**: light paper surfaces (`#fbfaf9`/`#ffffff`, border `#ddd8d2`), serif headings (Cormorant Garamond 600) over Lora body, a dark-navy ink band (`#0f3552`) for header/log, and a fixed **colour language** — human/OIDC `#17557f`, workload/SPIFFE `#12706a`, the bridge/`act` `#e0552b`, rejection `#b23a2c`, verdict-green `#2f6b45`. That colour language is semantic (it encodes which identity a value belongs to) — never repurpose those hues decoratively. A theme change is a token swap, not component edits.
 
 ## Code rules (lint-enforced, not vibes)
 

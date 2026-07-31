@@ -1,0 +1,64 @@
+.panel {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bar {
+  background: var(--surface-ink);
+  color: var(--text-on-ink);
+  padding: 7px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.http {
+  color: var(--verdict-pass-on-ink);
+}
+
+.content {
+  padding: 16px;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 11px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-soft);
+  align-items: start;
+}
+
+.tick {
+  color: var(--verdict-pass);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.label {
+  font-size: 16.5px;
+  line-height: 1.35;
+}
+
+.detail {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.logline {
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  background: var(--surface-ink);
+  color: var(--log-text);
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+}

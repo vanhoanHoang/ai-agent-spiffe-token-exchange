@@ -1,0 +1,20 @@
+<div class="panel">
+  <div class="bar">
+    <span>The call · four checks on the server</span>
+    <span class="http">✓ passed</span>
+  </div>
+  <div class="content">
+    @for (c of checks(); track c.label) {
+      <div class="check">
+        <span class="tick">✓</span>
+        <div>
+          <div class="label">{{ c.label }}</div>
+          <div class="detail">{{ c.detail }}</div>
+        </div>
+      </div>
+    }
+    @for (line of logLines(); track line) {
+      <div class="logline">{{ line }}</div>
+    }
+  </div>
+</div>

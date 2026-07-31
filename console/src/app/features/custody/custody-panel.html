@@ -1,0 +1,22 @@
+<div class="panel">
+  <div class="bar">
+    <span>X.509-SVID · chain of custody</span>
+    <span class="verdict" [class.bad]="!custody().verified">
+      {{ custody().verified ? '✓ verified' : '✕ NOT VERIFIED' }}
+    </span>
+  </div>
+  <div class="content">
+    @for (h of hops(); track h.name) {
+      <div class="hop">
+        <span class="dot"></span>
+        <div class="role">{{ h.role }}</div>
+        <div class="name">{{ h.name }}</div>
+        <div class="detail">{{ h.detail }}</div>
+        @if (h.badge) {
+          <div class="badge">{{ h.badge }}</div>
+        }
+      </div>
+    }
+    <p class="footnote">{{ custody().notes }} — verified by {{ custody().source }}.</p>
+  </div>
+</div>

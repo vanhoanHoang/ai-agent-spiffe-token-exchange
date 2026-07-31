@@ -1,0 +1,16 @@
+<div class="controls">
+  @if (replaying()) {
+    <button type="button" class="ctl" (click)="next()">Next line ›</button>
+    <span class="counter">{{ shown() }} / {{ lines().length }}</span>
+  }
+  <button type="button" class="ctl" (click)="all()">Show all</button>
+</div>
+<div class="screen">
+  @for (parts of visible(); track $index) {
+    <div class="line">
+      @for (p of parts; track $index) {
+        <span [class]="'tok ' + p.cls">{{ p.t }}</span>
+      }
+    </div>
+  }
+</div>

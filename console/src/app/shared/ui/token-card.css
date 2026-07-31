@@ -1,0 +1,142 @@
+.card {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bar {
+  color: var(--text-on-ink);
+  padding: 7px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 11px;
+}
+
+.card[data-role='human'] .bar {
+  background: var(--id-human);
+}
+
+.card[data-role='workload'] .bar {
+  background: var(--id-workload);
+}
+
+.card[data-role='bridge'] .bar {
+  background: var(--id-bridge);
+}
+
+.kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.toggle {
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid;
+  padding: 0 0 1px;
+}
+
+.content {
+  padding: 14px 16px 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.alg {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.claims {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 11px;
+  align-items: baseline;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: var(--radius-sm);
+}
+
+.row.hot {
+  background: rgb(0 0 0 / 2%);
+}
+
+.key,
+.val {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.val {
+  font-size: 14.5px;
+  word-break: break-all;
+  color: var(--text-primary);
+}
+
+.row[data-role='human'] .key,
+.row[data-role='human'] .val {
+  color: var(--id-human);
+}
+
+.row[data-role='workload'] .key,
+.row[data-role='workload'] .val {
+  color: var(--id-workload);
+}
+
+.row[data-role='bridge'] .key,
+.row[data-role='bridge'] .val {
+  color: var(--id-bridge);
+}
+
+.row.hot .val {
+  border-bottom: 2px solid currentcolor;
+  padding-bottom: 1px;
+}
+
+.sig {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-panel);
+}
+
+.note {
+  margin: 11px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}

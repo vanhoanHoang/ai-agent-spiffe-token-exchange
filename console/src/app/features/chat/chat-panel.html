@@ -1,0 +1,11 @@
+<div class="panel">
+  <div class="bar">Agent conversation · recorded</div>
+  <div class="content">
+    @for (m of messages(); track $index) {
+      <div class="msg" [class.deny]="m.deny">
+        <div class="label">{{ m.label }}</div>
+        <div class="text">{{ m.text }}</div>
+      </div>
+    }
+  </div>
+</div>
