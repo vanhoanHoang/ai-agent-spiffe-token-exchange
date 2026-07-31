@@ -19,6 +19,11 @@ services:
 
   spire-agent:
     image: ghcr.io/spiffe/spire-agent:1.15.2
+    # Host sleep past the SVID renewal window makes the agent (correctly)
+    # remove its SVID and exit; a fresh start re-attests via the long-lived
+    # x509pop bootstrap identity. Auto-restart turns a laptop nap into a
+    # ~30s self-heal instead of a dead Workload API.
+    restart: unless-stopped
     user: "0:0"                             # needs docker.sock + host pid access for workload attestation (lab-only)
     depends_on:
       spire-server: { condition: service_healthy }

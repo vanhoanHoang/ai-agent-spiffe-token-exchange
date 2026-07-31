@@ -75,6 +75,7 @@ with *consent*, not code.)
 | Symptom | First move |
 |---|---|
 | Any JWT rejection out of nowhere | `demo/checklist.sh` — clock skew first (CLAUDE.md §8) |
+| "Error fetching JWT SVID" in chat | The host slept past the SVID renewal window; spire-agent exits fail-closed. `demo/reset.sh --soft` (auto-restart now also covers it), then log in again — the old browser session's token died with the nap. |
 | `unable to find valid certification path` | Two hypotheses max, then `openssl s_client -showcerts` and read the chain |
 | Model rambles / never calls the tool | Re-ask verbatim from this script; temperature is 0, the prompts here are tested |
 | Model slow (CPU inference) | Talk through the console panels while it thinks — the wait is script material |
