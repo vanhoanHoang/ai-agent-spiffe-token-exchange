@@ -316,3 +316,16 @@ Proven by `scripts/check-console.sh` (green):
 6. **Windows path wart**: the repo path contains `&`, which breaks npm's cmd `.bin` shims; package.json scripts call the node entry points directly (`node node_modules/@angular/cli/bin/ng.js ...`). Also: the Angular build cache does not survive a fresh `node_modules` — the check clears `.angular` after `npm ci`.
 
 Consequences: BUILD-PLAN M11 exit is met (complete run rendered offline from captured JSON; killing it changes nothing — it is static files). P5 remains: stage resilience + DEMO.md narration. Re-capture (`demo/capture-run.sh`) then `cp demo/demo-run.json console/public/` refreshes what the console shows.
+
+---
+
+## D-016 — M10/M11 P5: stage resilience, narration, rehearsal; SIGPIPE pattern promoted repo-wide
+
+Date: 2026-07-31 · Milestone: demo track P5 · Author: claude-code
+
+1. **Stage kit**: `demo/reset.sh` (`--soft` restarts the app layer + idempotent setup, measured **83–84s**, under the <2 min target; `--full` = compose down/up with volumes kept, ~3 min; `--cold` destroys SPIRE/EJBCA volumes and ASKS first per CLAUDE.md §7). `demo/checklist.sh` checks clock skew FIRST (§8), then service health, model presence, ports, and the hosts-file line; `--full` adds the terminal acceptance. `docs/DEMO.md` carries the three-act narration and the failure cheat-sheet; the offline console is the recorded fallback.
+2. **Rehearsal evidence**: soft reset + checklist green twice (83s, 84s); third pass with `--full` checklist green including acceptance (all five rejections). The **cold** rehearsal is deliberately left to the human: it requires volume deletion (ask-first) and the EJBCA re-setup is the human-led critical path.
+3. **D-011's SIGPIPE bug had a second instance**: `infra/spire/register-workloads.sh` used `srv entry show | grep -q` under pipefail — an existing entry intermittently read as missing, the re-create then died ("failed to create one or more entries"; surfaced during rehearsal 2). Fixed with the same capture-first helper. **Ruling extended: the D-011 has() pattern is house style for ALL container-CLI existence checks (kcadm, spire-server, anything docker-exec'd), not just kcadm.**
+4. Session-scope note: P2→P5 were executed in one overnight run under an explicit user directive ("build everything left while I'm sleeping"), overriding the one-milestone-per-session default; each phase kept its own exit check and commit.
+
+Consequences: demo track complete — M10 exits #1/#2/#3 and M11 exit all green (D-012..D-015); `./infra/acceptance.sh` exits 0 untouched throughout. Remaining human items: hosts-file line for the live browser demo, and one cold-start rehearsal.

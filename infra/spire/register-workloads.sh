@@ -14,10 +14,19 @@ PARENT="spiffe://lab.internal/spire/agent/x509pop/${FP}"
 
 srv() { (cd .. && docker compose exec -T spire-server /opt/spire/bin/spire-server "$@"); }
 
+# SIGPIPE-safe existence test (D-011 house pattern): `... | grep -q` under
+# pipefail SIGPIPEs the docker exec on first match, an existing entry reads as
+# missing, and the re-create dies. Capture first, match second.
+has_entry() {
+  local out
+  out=$(srv entry show -spiffeID "$1" 2>/dev/null) || return 1
+  printf '%s' "$out" | grep -q -- "$1"
+}
+
 # test-agent: permanent fixture for the D-009 act↔peer binding rejection (M9)
 for w in agent-client mcp-server test-agent; do
   ID="spiffe://lab.internal/${w}"
-  if srv entry show -spiffeID "$ID" | grep -q "$ID"; then
+  if has_entry "$ID"; then
     echo "entry exists: $ID"
   else
     srv entry create -parentID "$PARENT" -spiffeID "$ID" \
