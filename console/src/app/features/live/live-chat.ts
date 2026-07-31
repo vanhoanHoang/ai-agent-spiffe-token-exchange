@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -37,6 +38,8 @@ const IDLE_HOPS: Record<HopId, HopStatus> = { svid: 'pre', exchange: 'pre', call
 })
 export class LiveChat {
   readonly user = input.required<LiveUser>();
+  /** Hop chip clicked — asks the page to open the matching stage detail. */
+  readonly inspect = output<string>();
 
   private readonly live = inject(LiveClient);
 
@@ -65,6 +68,10 @@ export class LiveChat {
   protected readonly toolNames = signal<readonly string[]>([]);
 
   protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
+
+  protected view(stageId: string): void {
+    this.inspect.emit(stageId);
+  }
 
   protected async logout(): Promise<void> {
     await this.live.logout();

@@ -53,6 +53,8 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-panel);
   color: var(--text-muted);
+  background: none;
+  cursor: pointer;
 }
 
 .hop.human.done {

@@ -17,7 +17,7 @@
           <h2>Live agent</h2>
           <span class="rule"></span>
         </div>
-        <dc-live-chat [user]="u" />
+        <dc-live-chat [user]="u" (inspect)="inspect($event)" />
       </section>
     } @else if (liveState() === 'anonymous') {
       <section class="login-banner">
@@ -52,7 +52,7 @@
       <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
     </section>
 
-    <section class="stage" [attr.data-role]="stage().role">
+    <section class="stage" #stagePanel [attr.data-role]="stage().role">
       <div class="stage-head">
         <span class="stage-tag">{{ stage().kindLabel }}</span>
         <h3>{{ stage().title }}</h3>

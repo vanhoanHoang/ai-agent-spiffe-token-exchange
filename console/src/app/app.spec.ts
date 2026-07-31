@@ -123,4 +123,16 @@ describe('App', () => {
     expect(el.querySelector('dc-live-chat')?.textContent).toContain('alice');
     expect(el.querySelector('.login-banner')).toBeFalsy();
   });
+
+  it('clicking a live hop opens the matching stage detail', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp({ username: 'alice', scopes: ['openid'] });
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.hop'))
+      .find((b) => b.textContent?.includes('02'))
+      ?.click();
+    await fixture.whenStable();
+    expect(el.querySelector('.stage h3')?.textContent).toContain('Agent fetches SVIDs');
+    expect(el.querySelector('dc-custody-panel')).toBeTruthy();
+  });
 });

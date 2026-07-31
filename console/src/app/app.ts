@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { DemoRun, DemoStep, parseDemoRun } from './core/demo-run';
 import { LiveClient, LiveState, LiveUser } from './core/live';
@@ -94,6 +102,14 @@ export class App {
   protected select(id: string): void {
     this.stopPlay();
     this.stageId.set(id);
+  }
+
+  private readonly stagePanel = viewChild<ElementRef<HTMLElement>>('stagePanel');
+
+  /** A live hop chip was clicked: open its stage detail and bring it into view. */
+  protected inspect(id: string): void {
+    this.select(id);
+    this.stagePanel()?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }
 
   /** The mockup's play behavior: walk the five stages, packets and all. */
