@@ -37,9 +37,24 @@ Today the server is REST-only (`/api/whoami`). M10 needs the real protocol behin
 
 **Exit:** BUILD-PLAN M10 exits #1 and #3 — a natural-language request produces an MCP call whose server log shows `sub`=alice and `act.sub`=agent SPIFFE ID, with no LLM key in existence; containment grep green.
 
+## P2.5 — Browser login + chat UI *(added 2026-07-31 on human decision)*
+
+Additive presentation layer: **M10's exit criteria are unchanged**, and `acceptance.sh` keeps using the password grant. This exists so the audience *feels* the delegation instead of reading it from a script: alice logs in herself, consents, and chats.
+
+- **Keycloak client `demo-web`**: public, standard flow (authorization code + **PKCE**), no secret, redirect URI on the agent. Two settings carry the demo:
+  - `consentRequired=true` — Keycloak shows the consent screen. **This screen is the delegation moment**: the human granting an agent permission to act for her, immediately before `act.sub` proves which workload did.
+  - default scope `agent-audience` — alice's token must carry `aud=agent-client` or the exchange is refused (D-008 subject-token rule). The rule that protects the flow also shapes the login.
+- **agent-client** gains `spring-boot-starter-oauth2-client` + a minimal chat page (server-rendered, no framework). Per message: take alice's session token → RFC 8693 exchange (jwt-spiffe client auth) → `ChatClient` with MCP tools over SVID mTLS.
+- **Token hygiene, demonstrated not just claimed**: alice's token lives **server-side in the session**; the browser holds an ordinary session cookie and never sees a token. The exchanged token exists only for the duration of the call. Stated on stage — it is the pattern people usually get wrong.
+- **Optional scope toggle (feeds P3)**: `mcp:audit` is an optional scope, so the login link can request it or not. Log in without it → the audit tool is refused; log in again granting it → the same request succeeds. The audience watches authorization change with *consent*, not with code.
+
+**Exit:** `scripts/check-p25.sh` — scripted authorization-code login (curl through the Keycloak login form, cookie jar), then a chat POST — produces an MCP call whose server log shows `sub`=alice and `act.sub`=agent SPIFFE ID; the check asserts **no access token appears in any browser-visible response**; `./infra/acceptance.sh` still exits 0.
+
 ## P3 — The negative demo (M10 exit #2)
 
 Ask the agent to read the audit log (scope alice's token doesn't carry). The model *tries*; the MCP server refuses with 403; the agent reports the refusal. One sentence on stage: **enforcement is tokens, not model behavior** — the model was willing, the token said no.
+
+With P2.5 in place this becomes interactive: run it once with a consent that withholds `mcp:audit` (refused), then re-login granting it (allowed) — same question, same model, different token.
 
 **Exit:** BUILD-PLAN M10 exit #2, plus the flow captured in the demo transcript for M11.
 
@@ -47,7 +62,7 @@ Ask the agent to read the audit log (scope alice's token doesn't carry). The mod
 
 Read-only visualizer per BUILD-PLAN M11: act rail, chain-of-custody panel, token cards, rejection cards, live log tail — fed by JSON captured from a demo run; holds no secrets, validates nothing, killing it changes nothing.
 
-- Demo runs (P2/P3 + the five acceptance rejections) emit a structured `demo-run.json` (decoded claims, verdicts, log lines; signatures redacted).
+- Demo runs (P2/P2.5/P3 + the five acceptance rejections) emit a structured `demo-run.json` (decoded claims, verdicts, log lines; signatures redacted). The login/consent step is a step in the capture too, so the console can show the human's grant next to the workload's proof.
 - Static page (no backend) renders it offline. **The referenced mockup is not in the repo** — either supply it, or the console gets designed fresh in its style section.
 
 **Exit:** BUILD-PLAN M11 exit — complete run rendered offline from captured JSON.
@@ -55,7 +70,7 @@ Read-only visualizer per BUILD-PLAN M11: act rail, chain-of-custody panel, token
 ## P5 — Stage resilience + storyline
 
 - `demo/reset.sh --soft` (<2 min, keeps volumes) / `--cold` (asks first — SPIRE/EJBCA state); pre-demo checklist (clock skew first, ports, model pulled, acceptance green); failure cheat-sheet; recorded `--auto` fallback.
-- `docs/DEMO.md` narration in three acts: the problem → the happy path (agent chats, tokens shown, log line lands) → the attacks (five rejections + the scope refusal, one story-line each).
+- `docs/DEMO.md` narration in three acts: the problem → the happy path (**alice logs in and consents**, agent chats, tokens shown, log line lands) → the attacks (five rejections + the consent-driven scope refusal, one story-line each).
 
 **Exit:** from cold: checklist → full demo green under a rehearsal timer, twice.
 
@@ -68,8 +83,11 @@ Read-only visualizer per BUILD-PLAN M11: act rail, chain-of-custody panel, token
 | P0 verify & pin | post-cutoff APIs, the two builder hooks | 1–2h |
 | P1 MCP-ify server | protocol × security-stack composition | 2–4h |
 | P2 agentic loop | Spring AI ↔ hand-built MCP client wiring; CPU model latency | 2–4h |
+| P2.5 login + chat UI | browser OIDC ↔ exchange wiring; session token hygiene | 3–4h |
 | P3 negative demo | scope plumbing end-to-end | ~1h |
 | P4 console | none (offline, read-only) | 2–3h |
 | P5 resilience | stage failure | 1–2h |
 
-P0→P1→P2 is the critical path; P4 can start once P2 emits JSON. If P0 falsifies a load-bearing assumption (either builder hook missing), stop and re-plan against what the sources actually offer — recorded in DECISIONS, per house rules.
+P0→P1→P2 is the critical path; P2.5 follows P2 (it needs the loop it puts a face on); P4 can start once P2/P2.5 emit JSON. If P0 falsifies a load-bearing assumption (either builder hook missing), stop and re-plan against what the sources actually offer — recorded in DECISIONS, per house rules.
+
+**Concurrency note (2026-07-31):** P2 is being built in a parallel session. Whoever implements P2.5 records its DECISIONS entry under the next free D-number at that time — this plan deliberately does not reserve one, to avoid two sessions claiming the same number in an append-only log.
