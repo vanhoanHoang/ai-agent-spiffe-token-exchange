@@ -270,3 +270,17 @@ Decision / findings, proven by `scripts/check-p2.sh` (green):
 Evidence: check output in transcript; SDK facts from mcp-core 2.0.0 / spring-ai-mcp 2.0.0 sources jars (repo1); npm registry metadata for Angular pins.
 
 Consequences: P2.5 reuses `TokenExchange`/`BearerHolder`/`AgentLoop` unchanged (adds oauth2-client + a page). P3's fixture is already live (alice's token lacks `mcp:audit`). P4 starts from `console/CLAUDE.md`. Standing user directive this session: continue through the remaining demo phases in one run.
+
+---
+
+## D-013 — M10 P3: negative demo green; DEMO_RUN capture format (M11 input) fixed at v1
+
+Date: 2026-07-31 · Milestone: M10 (demo track) · Author: claude-code
+
+1. **BUILD-PLAN M10 exit #2 proven** (`scripts/check-p3.sh` green): asked to read the audit log, the model attempts the tool (server logs `tool=read_audit_log DENIED` for alice's sub), the server refuses with `insufficient_scope`, no successful read occurs, and the agent reports the refusal in its answer. The check also asserts the fixture is real (alice's token demonstrably lacks `mcp:audit`) so the refusal can never be staged.
+2. **DEMO_RUN v1** (`demo/demo-run.schema.json`): the M11 console's single input. `demo/capture-run.sh` captures happy chat + scope refusal + the five M9 rejections + chain of custody into `demo/demo-run.json`; `demo/assemble-run.py` decodes claims, forces `signature: REDACTED`, and **refuses to write** if any JWT-shaped string (three base64url segments) survives — the "holds no secrets" property is enforced at capture time, not by console politeness.
+3. The capture reuses acceptance.sh verbatim as the source of rejection verdicts (`deny-as-designed` only if the corresponding PASS line is present) — the console can never show a rejection the stack didn't actually perform.
+
+Evidence: check-p3 and capture output in transcript; demo/demo-run.json in-repo (committed as the console fixture).
+
+Consequences: P4 renders this file; P2.5 will extend the capture's login step (kind: consent) when it lands.

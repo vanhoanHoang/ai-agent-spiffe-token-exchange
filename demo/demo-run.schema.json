@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lab.internal/demo-run.schema.json",
+  "title": "DEMO_RUN",
+  "description": "One captured demo run of the SPIFFE/OIDC lab, rendered offline by the M11 console. Holds decoded claims and log lines only — signatures are always the literal string REDACTED, and no complete token may ever appear in a capture.",
+  "type": "object",
+  "required": ["version", "captured_at", "trust_domain", "actors", "tokens", "steps", "rejections", "chain_of_custody", "log_tail"],
+  "properties": {
+    "version": { "const": 1 },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "trust_domain": { "const": "spiffe://lab.internal" },
+    "actors": {
+      "type": "object",
+      "required": ["human", "agent", "mcp_server"],
+      "properties": {
+        "human": {
+          "type": "object",
+          "required": ["username", "sub"],
+          "properties": {
+            "username": { "type": "string" },
+            "sub": { "type": "string" }
+          }
+        },
+        "agent": {
+          "type": "object",
+          "required": ["spiffe_id"],
+          "properties": { "spiffe_id": { "type": "string", "pattern": "^spiffe://lab\\.internal/" } }
+        },
+        "mcp_server": {
+          "type": "object",
+          "required": ["spiffe_id", "resource_id"],
+          "properties": {
+            "spiffe_id": { "type": "string", "pattern": "^spiffe://lab\\.internal/" },
+            "resource_id": { "type": "string" }
+          }
+        }
+      }
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "header", "claims", "signature"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "header": { "type": "object" },
+          "claims": { "type": "object" },
+          "signature": { "const": "REDACTED" }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "title", "verdict"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["login", "consent", "exchange", "chat", "tool_call", "rejection"] },
+          "title": { "type": "string" },
+          "verdict": { "enum": ["pass", "deny"] },
+          "prompt": { "type": "string" },
+          "answer": { "type": "string" },
+          "token_ref": { "type": "string" },
+          "detail": { "type": "string" },
+          "log_lines": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "rejections": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "verdict", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "verdict": { "enum": ["deny-as-designed", "FAILED-TO-DENY"] },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "chain_of_custody": {
+      "type": "object",
+      "required": ["verified", "notes", "source"],
+      "properties": {
+        "verified": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "log_tail": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "captured_at": "2026-07-31T01:05:53+00:00",
+  "trust_domain": "spiffe://lab.internal",
+  "actors": {
+    "human": {
+      "username": "alice",
+      "sub": "47e529a2-d2e0-460e-8145-a0056deb326d"
+    },
+    "agent": {
+      "spiffe_id": "spiffe://lab.internal/agent-client"
+    },
+    "mcp_server": {
+      "spiffe_id": "spiffe://lab.internal/mcp-server",
+      "resource_id": "https://mcp.lab.internal:8443"
+    }
+  },
+  "tokens": [
+    {
+      "name": "subject_token",
+      "description": "alice's login token (password grant; aud=agent-client via the agent-audience scope \u2014 D-008 subject-token rule)",
+      "header": {
+        "alg": "RS256",
+        "typ": "JWT",
+        "kid": "gXvSa8NNq0HMqd5hD_4abYbmR39K7gHT_cEn8Ag0kE4"
+      },
+      "claims": {
+        "exp": 1785459990,
+        "iat": 1785459690,
+        "jti": "onrtro:2d534488-d3b6-9b01-edaa-2096470a960e",
+        "iss": "http://keycloak:8080/realms/lab",
+        "aud": [
+          "https://mcp.lab.internal:8443",
+          "agent-client",
+          "account"
+        ],
+        "sub": "47e529a2-d2e0-460e-8145-a0056deb326d",
+        "typ": "Bearer",
+        "azp": "test-caller",
+        "sid": "Jtyh4xtbuZfJtw83Amy6mNyI",
+        "acr": "1",
+        "realm_access": {
+          "roles": [
+            "offline_access",
+            "default-roles-lab",
+            "uma_authorization"
+          ]
+        },
+        "resource_access": {
+          "account": {
+            "roles": [
+              "manage-account",
+              "manage-account-links",
+              "view-profile"
+            ]
+          }
+        },
+        "scope": "mcp-audience agent-audience profile email",
+        "email_verified": true,
+        "name": "Alice Lab",
+        "preferred_username": "alice",
+        "given_name": "Alice",
+        "family_name": "Lab",
+        "email": "alice@lab.internal"
+      },
+      "signature": "REDACTED"
+    },
+    {
+      "name": "exchanged_token",
+      "description": "RFC 8693 exchange, client-authenticated with the agent's JWT-SVID (jwt-spiffe): sub = alice, act.sub = the agent, aud = the MCP server",
+      "header": {
+        "alg": "RS256",
+        "typ": "JWT",
+        "kid": "gXvSa8NNq0HMqd5hD_4abYbmR39K7gHT_cEn8Ag0kE4"
+      },
+      "claims": {
+        "exp": 1785459992,
+        "iat": 1785459692,
+        "jti": "ntrtte:71781631-28f7-7da4-db35-ec9eaf4510d0",
+        "iss": "http://keycloak:8080/realms/lab",
+        "aud": [
+          "https://mcp.lab.internal:8443",
+          "account"
+        ],
+        "sub": "47e529a2-d2e0-460e-8145-a0056deb326d",
+        "typ": "Bearer",
+        "azp": "agent-client",
+        "sid": "Jtyh4xtbuZfJtw83Amy6mNyI",
+        "acr": "1",
+        "realm_access": {
+          "roles": [
+            "offline_access",
+            "default-roles-lab",
+            "uma_authorization"
+          ]
+        },
+        "resource_access": {
+          "account": {
+            "roles": [
+              "manage-account",
+              "manage-account-links",
+              "view-profile"
+            ]
+          }
+        },
+        "scope": "mcp-audience profile email",
+        "email_verified": true,
+        "act": {
+          "sub": "spiffe://lab.internal/agent-client"
+        },
+        "name": "Alice Lab",
+        "preferred_username": "alice",
+        "given_name": "Alice",
+        "family_name": "Lab",
+        "email": "alice@lab.internal"
+      },
+      "signature": "REDACTED"
+    }
+  ],
+  "steps": [
+    {
+      "id": "login",
+      "kind": "login",
+      "verdict": "pass",
+      "title": "alice logs in",
+      "detail": "password grant (P2 capture; P2.5 replaces this step with authorization code + PKCE + consent)",
+      "token_ref": "subject_token"
+    },
+    {
+      "id": "exchange",
+      "kind": "exchange",
+      "verdict": "pass",
+      "title": "jwt-spiffe token exchange (RFC 8693)",
+      "detail": "client authentication = the agent's JWT-SVID; no client secret exists",
+      "token_ref": "exchanged_token"
+    },
+    {
+      "id": "chat-whoami",
+      "kind": "chat",
+      "verdict": "pass",
+      "title": "natural language -> MCP tool call (whoami)",
+      "prompt": "Use the whoami tool, then state which workload and which human you are acting for.",
+      "answer": "Based on the whoami tool results, I am acting for:\n\n**Human:** alice (SPIFFE ID: 47e529a2-d2e0-460e-8145-a0056deb326d)\n\n**Workload:** spiffe://lab.internal/agent-client",
+      "log_lines": [
+        "2026-07-31T01:02:08.165Z  INFO 1 --- [nio-8443-exec-5] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}"
+      ]
+    },
+    {
+      "id": "chat-audit-refused",
+      "kind": "chat",
+      "verdict": "deny",
+      "title": "scope refusal: read_audit_log without mcp:audit",
+      "detail": "the model attempts the call; the token decides \u2014 enforcement is tokens, not model behavior",
+      "prompt": "Read the audit log and summarize the most recent entries.",
+      "answer": "2026-07-31T01:03:37.586Z ERROR 1 --- [           main] o.s.ai.mcp.SyncMcpToolCallback           : Error calling tool: [TextContent[annotations=null, text=Error invoking method: readAuditLog\ninsufficient_scope: this call requires the 'mcp:audit' scope; the presented token does not carry it, meta=null]]\nI'm unable to read the audit log at this time. The MCP server returned an error indicating that I don't have the required 'mcp:audit' scope for this operation - the token presented doesn't carry the necessary permissions to access audited calls. This appears to be a legitimate security restriction rather than a technical failure, so I'm reporting it honestly as instructed.",
+      "log_lines": [
+        "2026-07-31T01:03:37.544Z  WARN 1 --- [nio-8443-exec-3] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]"
+      ]
+    }
+  ],
+  "rejections": [
+    {
+      "id": "no-client-cert",
+      "title": "no client cert -> rejected at TLS handshake",
+      "verdict": "deny-as-designed",
+      "source": "infra/acceptance.sh"
+    },
+    {
+      "id": "wrong-audience",
+      "title": "wrong-audience token -> 401",
+      "verdict": "deny-as-designed",
+      "source": "infra/acceptance.sh"
+    },
+    {
+      "id": "svid-as-bearer",
+      "title": "JWT-SVID as bearer -> 401",
+      "verdict": "deny-as-designed",
+      "source": "infra/acceptance.sh"
+    },
+    {
+      "id": "unlisted-workload",
+      "title": "unlisted SPIFFE ID -> 403",
+      "verdict": "deny-as-designed",
+      "source": "infra/acceptance.sh"
+    },
+    {
+      "id": "token-replay",
+      "title": "token replay by other workload -> 403 (act!=peer)",
+      "verdict": "deny-as-designed",
+      "source": "infra/acceptance.sh"
+    }
+  ],
+  "chain_of_custody": {
+    "verified": true,
+    "notes": "fresh SVID chains to the EJBCA root; the intermediate's URI name constraint (URI:lab.internal) is present and critical",
+    "source": "infra/acceptance.sh"
+  },
+  "log_tail": [
+    "2026-07-31T00:05:16.128Z  INFO 1 --- [nio-8443-exec-9] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T00:05:20.895Z  WARN 1 --- [nio-8443-exec-9] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]",
+    "2026-07-31T00:07:55.570Z  INFO 1 --- [nio-8443-exec-1] internal.lab.mcp.WhoamiController        : call sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client} aud=[https://mcp.lab.internal:8443, account] peer=spiffe://lab.internal/agent-client",
+    "2026-07-31T00:10:00.966Z  INFO 1 --- [nio-8443-exec-9] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T00:10:05.854Z  WARN 1 --- [nio-8443-exec-9] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]",
+    "2026-07-31T00:17:26.933Z  INFO 1 --- [nio-8443-exec-2] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T00:17:31.770Z  WARN 1 --- [nio-8443-exec-2] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]",
+    "2026-07-31T00:18:43.297Z  INFO 1 --- [nio-8443-exec-7] internal.lab.mcp.WhoamiController        : call sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client} aud=[https://mcp.lab.internal:8443, account] peer=spiffe://lab.internal/agent-client",
+    "2026-07-31T00:47:02.015Z  INFO 1 --- [nio-8443-exec-3] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T00:50:57.876Z  INFO 1 --- [nio-8443-exec-6] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T00:52:42.142Z  INFO 1 --- [nio-8443-exec-7] internal.lab.mcp.WhoamiController        : call sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client} aud=[https://mcp.lab.internal:8443, account] peer=spiffe://lab.internal/agent-client",
+    "2026-07-31T00:56:58.256Z  WARN 1 --- [nio-8443-exec-1] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]",
+    "2026-07-31T00:58:29.660Z  INFO 1 --- [nio-8443-exec-9] internal.lab.mcp.WhoamiController        : call sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client} aud=[https://mcp.lab.internal:8443, account] peer=spiffe://lab.internal/agent-client",
+    "2026-07-31T01:02:08.165Z  INFO 1 --- [nio-8443-exec-5] internal.lab.mcp.LabTools                : tool=whoami sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client}",
+    "2026-07-31T01:03:37.544Z  WARN 1 --- [nio-8443-exec-3] internal.lab.mcp.LabTools                : tool=read_audit_log DENIED sub=47e529a2-d2e0-460e-8145-a0056deb326d scopes=[mcp-audience, profile, email]",
+    "2026-07-31T01:05:18.566Z  INFO 1 --- [nio-8443-exec-3] internal.lab.mcp.WhoamiController        : call sub=47e529a2-d2e0-460e-8145-a0056deb326d act={sub=spiffe://lab.internal/agent-client} aud=[https://mcp.lab.internal:8443, account] peer=spiffe://lab.internal/agent-client"
+  ]
+}
