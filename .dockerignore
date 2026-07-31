@@ -1,0 +1,10 @@
+# Root build context is used ONLY by agent-client/Dockerfile (compose sets
+# context: .. for the agent images). Allow just what that build needs; key
+# material (infra/pki, spire bootstrap) must never enter a build context.
+*
+!agent-client
+!console
+agent-client/target
+console/node_modules
+console/dist
+console/.angular

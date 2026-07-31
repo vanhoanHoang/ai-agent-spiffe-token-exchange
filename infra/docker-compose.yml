@@ -90,7 +90,9 @@ services:
   # never started as a long-running service.
   agent-client:
     profiles: [tools]
-    build: ../agent-client
+    build:
+      context: ..
+      dockerfile: agent-client/Dockerfile
     networks: [lab]
 
   # ---- profile: demo (M10) ------------------------------------------------
@@ -115,7 +117,9 @@ services:
   # alice's token lives in the server-side session, the browser gets a cookie.
   agent-web:
     profiles: [demo]
-    build: ../agent-client
+    build:
+      context: ..                              # repo root: the image also builds the console (D-024)
+      dockerfile: agent-client/Dockerfile
     image: spiffe-mcp-lab-agent-client
     command: ["web"]
     labels:
@@ -129,9 +133,8 @@ services:
       SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
     volumes:
       - spire-agent-socket:/tmp/spire-agent/public:ro
-      # P6: the built Angular console, served at /console/ (build on host:
-      # `npm run build` in console/ — no node inside the Java image)
-      - ../console/dist/console/browser:/app/console-ui:ro
+      # The console is baked into the image (D-024). For fast UI iteration,
+      # docker-compose.dev.yml mounts a host-built dist over it.
     ports: ["8090:8090"]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8090"]

@@ -1,0 +1,7 @@
+# UI iteration overlay (D-024): mount a host-built console over the baked one
+# so `npm run build` in console/ shows up without an image rebuild.
+#   (cd infra && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo up -d agent-web)
+services:
+  agent-web:
+    volumes:
+      - ../console/dist/console/browser:/app/console-ui:ro

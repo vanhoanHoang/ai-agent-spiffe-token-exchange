@@ -432,3 +432,18 @@ Date: 2026-07-31 · Milestone: demo track P6.6 · Author: claude-code
 Evidence: live `/api/svid` output in transcript (all five chain certs decoded; AKI→SKI links visible across the chain); check-p6 PASS (run of record below); JDK `X500Principal.getName(format, oidMap)` used for DN keywords.
 
 Consequences: the stage-02 panel is now sufficient for a PKI-literate audience end-to-end: chain-of-custody story (captured), the real chain (live), the name constraint readable, and rotation observable within a ~30-min session. The `Der` walker is deliberately minimal — if a future cert renders `raw:` hex for something worth decoding, extend the walker, don't reach for BouncyCastle without a decision entry.
+
+---
+
+## D-024 — Console build moved into the agent image (user-directed); supersedes D-017's host-build point
+
+Date: 2026-07-31 · Milestone: demo track · Author: claude-code (user: "shouldn't we have angular as a docker container in docker compose?")
+
+1. **The Angular console is now built inside `agent-client/Dockerfile`** (stage `console-build`, `node:22.23.2-alpine` — newest 22-alpine on hub at pin time; VERSIONS.md row owed, human-gated) and baked into the runtime image at `/app/console-ui`. The compose build context for both agent services widened to the **repo root** (`context: ..`) so the Dockerfile can see `console/`; a root `.dockerignore` allowlists only `agent-client/` + `console/` and keeps key material (infra/pki, spire bootstrap) out of any build context. A fresh machine now needs **only Docker + bash** — the README quickstart dropped the Node prerequisite and the host build step.
+2. **Not a separate frontend container, deliberately**: at runtime the console is static files, and it must be served by agent-web itself — same origin is what makes alice's session cookie and CSRF work (D-017). Only the BUILD moved into Docker; D-017's serving model, D-020's one-interface rule, and the console's offline M11 exit are unchanged.
+3. **The fast-iteration path survives as an explicit overlay**: `infra/docker-compose.dev.yml` mounts a host-built `console/dist/console/browser` over the baked copy (`npm run build` → visible without image rebuild). Default compose has no console mount — a fresh clone can never shadow the baked UI with an empty host dir.
+4. Trade acknowledged: routine `docker compose build agent-web` now includes `npm ci` + `ng build` (~1–2 min warm, longer cold). Accepted for the portability win; the overlay exists precisely so UI work doesn't pay it per edit.
+
+Evidence: image built from root context; running agent-web shows a single mount (spire socket) and serves `<dc-root>` + `/api/svid` from the baked files (transcript); node tag list from hub.docker.com/v2 (22.23.2-alpine).
+
+Consequences: README quickstart is 3 steps; `check-p6`/`check-p25` unchanged (they assert the SERVED surface, agnostic of where it was built); console exit check (`check-console.sh`) still builds on host by design — it is the console's own gate, not the image's. VERSIONS.md row owed: `node:22.23.2-alpine` (build image, agent Dockerfile).
