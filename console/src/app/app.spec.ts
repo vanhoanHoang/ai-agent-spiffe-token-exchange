@@ -42,7 +42,21 @@ describe('App', () => {
     expect(el.textContent).toContain('spiffe://lab.internal');
     expect(el.querySelectorAll('dc-step-rail').length).toBe(1);
     expect(el.querySelectorAll('dc-rejection-grid').length).toBe(1);
-    expect(el.querySelectorAll('dc-log-panel').length).toBe(1);
+  });
+
+  it('tabs: rejections by default, server log after switching', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderApp();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('dc-rejection-grid')).toBeTruthy();
+    expect(el.querySelector('dc-log-panel')).toBeFalsy();
+
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.tab'))
+      .find((b) => b.textContent?.includes('MCP server log'))
+      ?.click();
+    await fixture.whenStable();
+    expect(el.querySelector('dc-log-panel')).toBeTruthy();
+    expect(el.querySelector('dc-rejection-grid')).toBeFalsy();
   });
 
   it('shows the login token card first, then the exchange card when selected', async () => {

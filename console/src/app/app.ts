@@ -45,6 +45,7 @@ export class App {
   protected readonly run = signal<DemoRun | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly stageId = signal<string>('login');
+  protected readonly tab = signal<'rejections' | 'log'>('rejections');
   protected readonly liveState = signal<LiveState>('offline');
   protected readonly liveUser = computed<LiveUser | null>(() => {
     const s = this.liveState();

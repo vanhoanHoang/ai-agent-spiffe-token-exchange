@@ -7,19 +7,6 @@ main {
   gap: var(--space-8);
 }
 
-.legend {
-  background: var(--surface-panel);
-  border-bottom: 1px solid var(--border-panel);
-  padding: var(--space-2) var(--space-8);
-  display: flex;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  align-items: center;
-  font-size: 14.5px;
-  color: var(--text-secondary);
-}
-
-.legend-label,
 .kicker {
   font-size: 10.5px;
   letter-spacing: 0.2em;
@@ -27,31 +14,22 @@ main {
   color: var(--text-muted);
 }
 
-.kicker.ok {
-  color: var(--verdict-pass);
+.tab {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 21px;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 4px;
+  cursor: pointer;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.swatch {
-  width: 26px;
-  border-top: 3px solid;
-}
-
-.swatch.human {
-  border-color: var(--id-human);
-}
-
-.swatch.workload {
-  border-color: var(--id-workload);
-}
-
-.swatch.bridge {
-  border-color: var(--id-bridge);
+.tab.on {
+  color: var(--text-primary);
+  border-bottom-color: var(--id-bridge);
 }
 
 .section-head {

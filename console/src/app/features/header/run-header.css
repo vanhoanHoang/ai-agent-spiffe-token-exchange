@@ -14,13 +14,6 @@ header {
   margin: 0 auto;
 }
 
-.kicker {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--kicker-orange);
-}
-
 h1 {
   font-weight: 500;
   font-size: 36px;

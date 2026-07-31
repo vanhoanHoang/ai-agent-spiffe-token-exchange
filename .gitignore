@@ -23,6 +23,7 @@ logs/
 # IDE / OS noise
 .idea/
 .vscode/
+.claude/*.lock
 *.iml
 Thumbs.db
 .DS_Store

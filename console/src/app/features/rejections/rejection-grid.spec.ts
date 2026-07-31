@@ -12,7 +12,7 @@ describe('RejectionGrid', () => {
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('.card').length).toBe(6);
-    expect(el.textContent).toContain('The model was willing, the token said no.');
+    expect(el.textContent).toContain('token scopes (user ∩ agent)');
     expect(el.querySelectorAll('.card.failed').length).toBe(0);
   });
 

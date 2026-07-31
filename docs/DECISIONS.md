@@ -386,3 +386,19 @@ Date: 2026-07-31 · Milestone: demo track P6.3 · Author: claude-code
 4. check-p6.sh updated for root serving (console at `/`, login-landing equality assert). Its full ~10-min run was NOT re-executed after this refactor (P25 covers the changed paths; the stream endpoint is untouched) — **next session should run `bash scripts/check-p6.sh` once for the record.**
 
 Consequences: http://localhost:8090 is the demo, full stop. Handoff state: all demo-track checks (m0–m7, p1, p2, p25, p3, p6, console, acceptance) green as of their last runs this session; stack up with demo profile; hosts-file line present on this host.
+
+---
+
+## D-021 — P6.4 (user-directed): audience-ready console — copy sweep, tabs, chat-window live panel; D-020's owed check-p6 run recorded green
+
+Date: 2026-07-31 · Milestone: demo track P6.4 · Author: claude-code
+
+1. **D-020's owed item is closed**: `scripts/check-p6.sh` full run executed this session against the P6.3 build — **P6 PASS, exit 0**, all legs green including nested check-console and acceptance.
+2. **Copy sweep (user: page must read clean for an audience, nothing AI-flavored)**: colour-language legend deleted; section kickers ("same chain, running now", "Every rejection is the design working", "Click a step") removed; headings renamed to feature labels (Architecture, Request flow); rejection-card "lesson" aphorism line dropped (story + mechanism stay — both factual); live-panel footnote/explainers removed; em-dash asides in narration flattened to plain sentences; internal jargon ("(M3)") removed from visible copy. All verdict/identity/log content untouched — the capture remains the only source of facts.
+3. **Tabs**: "Rejections" and "MCP server log" now share one tabbed section (default: Rejections); app.spec covers default tab + switch. Rationale: page length and feature focus; both panels are secondary anatomy under the live demo.
+4. **Live panel is now a chat window** (user-directed): sender-labeled bubbles (username right in `--id-human`, agent left neutral), sent message echoed immediately via a `draft` signal, three-dot typing indicator, auto-scrolling thread (effect + `scrollTop`; jsdom has no `scrollTo`), pill composer. New primitive token `--radius-lg: 10px` for bubble/composer radii. Hop rail and event feed unchanged — the real-time chain evidence (D-018) is untouched.
+5. Housekeeping: `.claude/scheduled_tasks.lock` (runtime artifact accidentally committed at M4) untracked; `.claude/*.lock` gitignored.
+
+Evidence: check-p6 PASS output in transcript; `scripts/check-console.sh` green post-change (26 tests, lint, offline assertions); served-bundle grep confirms removed strings absent and new UI strings present at http://localhost:8090.
+
+Consequences: console suite is 26 tests. Copy in `core/narrative.ts` is now the audience script — future copy edits stay factual-first per D-015 point 3.

@@ -65,7 +65,7 @@ describe('LiveChat', () => {
     ]);
     await sendMessage(fixture, 'break');
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.a.err')?.textContent).toContain('exchange failed');
+    expect(el.querySelector('.bubble.err')?.textContent).toContain('exchange failed');
     expect(el.querySelector('.panel')?.getAttribute('data-phase')).toBe('error');
     expect(el.querySelector('.hop.bridge')?.getAttribute('data-s')).toBe('failed');
   });

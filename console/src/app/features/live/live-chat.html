@@ -1,16 +1,16 @@
 <div class="panel" [attr.data-phase]="phase()">
   <div class="bar">
-    <span>Live · acting for {{ user().username }}</span>
+    <span>Acting for {{ user().username }}</span>
     <span class="scopes">
-      consented: {{ user().scopes.join(' ') }}
+      scopes: {{ user().scopes.join(' ') }}
       @if (!hasAudit()) {
-        <em> — no mcp:audit: the audit tool will be refused</em>
+        <em> · no mcp:audit</em>
       }
     </span>
-    <button type="button" class="logout" (click)="logout()">log out · switch scopes</button>
+    <button type="button" class="logout" (click)="logout()">Log out</button>
   </div>
 
-  <div class="flow" aria-label="what happens to this message, as it happens">
+  <div class="flow" aria-label="message flow">
     <span class="hop human done">01 login ✓</span>
     <span class="arrow"></span>
     <span class="hop workload" [attr.data-s]="hops().svid">02 fetch JWT-SVID</span>
@@ -25,7 +25,7 @@
   </div>
 
   @if (feed().length > 0) {
-    <div class="feed" aria-label="real events from the server, in arrival order">
+    <div class="feed" aria-label="server events">
       @for (line of feed(); track $index) {
         <div class="feed-line"><span class="feed-step">{{ line.step }}</span> {{ line.detail }}</div>
       }
@@ -33,24 +33,37 @@
   }
 
   <div class="content">
-    @for (t of turns(); track $index) {
-      <div class="turn">
-        <div class="q">{{ t.q }}</div>
-        <div class="a" [class.err]="t.error">{{ t.a }}</div>
-      </div>
-    }
-    @if (pending()) {
-      <div class="thinking">the model is thinking — each hop above lights up the moment it really completes…</div>
-    }
+    <div class="thread" #thread>
+      @if (turns().length === 0 && draft() === null) {
+        <div class="empty">Ask the agent something. Try “who am I?” or “read the audit log”.</div>
+      }
+      @for (t of turns(); track $index) {
+        <div class="row you">
+          <div class="who">{{ user().username }}</div>
+          <div class="bubble you">{{ t.q }}</div>
+        </div>
+        <div class="row agent">
+          <div class="who">agent</div>
+          <div class="bubble agent" [class.err]="t.error">{{ t.a }}</div>
+        </div>
+      }
+      @if (draft(); as d) {
+        <div class="row you">
+          <div class="who">{{ user().username }}</div>
+          <div class="bubble you">{{ d }}</div>
+        </div>
+        <div class="row agent">
+          <div class="who">agent</div>
+          <div class="bubble agent typing" aria-label="agent is responding">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+      }
+    </div>
     <div class="composer">
-      <input #box class="box" placeholder="Ask the agent (try: read the audit log)"
+      <input #box class="box" placeholder="Message the agent…"
         [disabled]="pending()" (keydown.enter)="send(box)" />
       <button type="button" class="go" [disabled]="pending()" (click)="send(box)">Send</button>
     </div>
-    <p class="footnote">
-      The hops are streamed from the agent as they complete — fetch JWT-SVID, RFC 8693
-      exchange, the model's actual tool calls over mTLS. The server-side proof is the
-      log line with <code>sub</code> and <code>act.sub</code>; the panels below are its anatomy.
-    </p>
   </div>
 </div>

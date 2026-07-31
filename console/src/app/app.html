@@ -3,19 +3,12 @@
     <h2>Cannot render this capture</h2>
     <p>{{ err }}</p>
     <p class="error-hint">
-      The console renders only a well-formed, redacted DEMO_RUN capture — it
-      refuses to show a partial or tampered run.
+      The console renders only a well-formed, redacted DEMO_RUN capture.
+      It refuses to show a partial or tampered run.
     </p>
   </div>
 } @else if (run(); as r) {
   <dc-run-header [run]="r" />
-
-  <div class="legend">
-    <span class="legend-label">Colour language</span>
-    <span class="legend-item"><span class="swatch human"></span> Human — <em>sub</em>, OIDC, Keycloak</span>
-    <span class="legend-item"><span class="swatch workload"></span> Workload — SPIFFE, SVID, mTLS</span>
-    <span class="legend-item"><span class="swatch bridge"></span> The bridge — token exchange, <em>act</em></span>
-  </div>
 
   <main>
     @if (liveUser(); as u) {
@@ -23,27 +16,26 @@
         <div class="section-head">
           <h2>Live agent</h2>
           <span class="rule"></span>
-          <span class="kicker ok">same chain, running now</span>
         </div>
         <dc-live-chat [user]="u" />
       </section>
     } @else if (liveState() === 'anonymous') {
       <section class="login-banner">
-        <h2>Run it live</h2>
+        <h2>Live demo</h2>
         <p>
-          The agent is serving this console. Log in, consent, and chat — every
-          message runs the login → SVID → exchange → mTLS chain for real.
+          Log in and chat with the agent. Each message runs the full chain:
+          login → SVID → token exchange → mTLS call.
         </p>
         <p>
           <a class="login-btn" href="/oauth2/authorization/keycloak">Log in</a>
-          <a class="login-btn alt" href="/oauth2/authorization/keycloak-audit">Log in granting audit scope</a>
+          <a class="login-btn alt" href="/oauth2/authorization/keycloak-audit">Log in with audit scope</a>
         </p>
       </section>
     }
 
     <section>
       <div class="section-head">
-        <h2>How one call proves two identities</h2>
+        <h2>Architecture</h2>
         <span class="rule"></span>
         <button type="button" class="play" (click)="togglePlay()">
           {{ playing() ? '■ stop' : '▶ play the flow' }}
@@ -54,9 +46,8 @@
 
     <section>
       <div class="section-head">
-        <h2>The happy path</h2>
+        <h2>Request flow</h2>
         <span class="rule"></span>
-        <span class="kicker muted">Click a step</span>
       </div>
       <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
     </section>
@@ -67,7 +58,7 @@
         <h3>{{ stage().title }}</h3>
       </div>
       <p class="narration">{{ stage().narration }}</p>
-      <p class="proves"><em>What is proven here —</em> {{ stage().proves }}</p>
+      <p class="proves"><em>Proves:</em> {{ stage().proves }}</p>
 
       <div class="artifacts">
         @switch (stage().id) {
@@ -95,21 +86,24 @@
     </section>
 
     <section>
-      <div class="section-head">
-        <h2>Six ways in, six ways stopped</h2>
+      <div class="section-head tabs" role="tablist">
+        <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'rejections'"
+          [class.on]="tab() === 'rejections'" (click)="tab.set('rejections')">Rejections</button>
+        <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'log'"
+          [class.on]="tab() === 'log'" (click)="tab.set('log')">MCP server log</button>
         <span class="rule"></span>
-        <span class="kicker ok">Every rejection is the design working</span>
+        @if (tab() === 'log') {
+          <span class="kicker muted">{{ r.captured_at }}</span>
+        }
       </div>
-      <dc-rejection-grid [cards]="rejections()" />
-    </section>
-
-    <section>
-      <div class="section-head">
-        <h2>MCP server log</h2>
-        <span class="rule"></span>
-        <span class="kicker muted">Recorded · {{ r.captured_at }}</span>
-      </div>
-      <dc-log-panel [lines]="r.log_tail" />
+      @switch (tab()) {
+        @case ('rejections') {
+          <dc-rejection-grid [cards]="rejections()" />
+        }
+        @case ('log') {
+          <dc-log-panel [lines]="r.log_tail" />
+        }
+      }
     </section>
   </main>
 } @else {

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { LiveClient, LiveUser } from '../../core/live';
 
@@ -31,7 +41,24 @@ export class LiveChat {
   private readonly live = inject(LiveClient);
 
   protected readonly turns = signal<readonly Turn[]>([]);
+  protected readonly draft = signal<string | null>(null);
   protected readonly pending = signal(false);
+  private readonly thread = viewChild<ElementRef<HTMLDivElement>>('thread');
+
+  constructor() {
+    // Keep the thread pinned to the newest message as bubbles arrive.
+    effect(() => {
+      this.turns();
+      this.draft();
+      this.feed();
+      const el = this.thread()?.nativeElement;
+      if (el) {
+        requestAnimationFrame(() => {
+          el.scrollTop = el.scrollHeight;
+        });
+      }
+    });
+  }
   protected readonly phase = signal<Phase>('idle');
   protected readonly hops = signal<Record<HopId, HopStatus>>(IDLE_HOPS);
   protected readonly feed = signal<readonly FeedLine[]>([]);
@@ -68,6 +95,7 @@ export class LiveChat {
 
   private async run(message: string): Promise<void> {
     this.pending.set(true);
+    this.draft.set(message);
     this.phase.set('flight');
     this.hops.set({ ...IDLE_HOPS, svid: 'active' });
     this.feed.set([]);
@@ -76,6 +104,7 @@ export class LiveChat {
     const res = await this.live.chatStream(message, (s, d) => this.onEvent(s, d));
     const error = res.answer === undefined;
     this.turns.update((t) => [...t, { q: message, a: res.answer ?? res.error ?? 'no response', error }]);
+    this.draft.set(null);
     this.hops.update((h) => finishHops(h, error));
     this.phase.set(error ? 'error' : 'done');
     this.pending.set(false);
