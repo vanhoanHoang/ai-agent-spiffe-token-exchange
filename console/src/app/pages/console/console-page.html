@@ -20,24 +20,7 @@
       </button>
     </div>
 
-    @if (view() === 'live') {
-      @if (liveUser(); as u) {
-        <section>
-          <div class="section-head">
-            <h2>Live agent</h2>
-            <span class="rule"></span>
-          </div>
-          <dc-live-chat [user]="u" (inspect)="inspect($event)" />
-        </section>
-      } @else {
-        <section class="guest-note">
-          <p>
-            The live session needs a signed-in user.
-            <a routerLink="/login">Sign in</a> to chat with the agent.
-          </p>
-        </section>
-      }
-    } @else {
+    @if (view() !== 'live') {
       <div class="provenance">
         <span class="prov-tag">Recorded evidence</span>
         Captured {{ r.captured_at }} by a scripted test client and verified by the
@@ -56,6 +39,25 @@
       </div>
       <dc-flow-diagram [stage]="stageId()" />
     </section>
+
+    @if (view() === 'live') {
+      @if (liveUser(); as u) {
+        <section>
+          <div class="section-head">
+            <h2>Live agent</h2>
+            <span class="rule"></span>
+          </div>
+          <dc-live-chat [user]="u" (inspect)="inspect($event)" />
+        </section>
+      } @else {
+        <section class="guest-note">
+          <p>
+            The live session needs a signed-in user.
+            <a routerLink="/login">Sign in</a> to chat with the agent.
+          </p>
+        </section>
+      }
+    }
 
     <section>
       <div class="section-head">
