@@ -59,6 +59,17 @@ public class ExchangeScopeIntersectionExecutor
     private static final Set<String> STRUCTURAL = Set.of(
             "openid", "profile", "email", "roles", "web-origins", "acr", "basic", "address", "phone");
 
+    /**
+     * A scope names delegated authority when it is written {@code ns:verb}
+     * ({@code issue:employee-cert}); a bare scope is client configuration.
+     * Shared with {@link DelegationTableExecutor} so both halves of the policy
+     * agree on what counts as authority.
+     */
+    static boolean isDelegatedAuthority(String scope) {
+        int colon = scope.indexOf(':');
+        return colon > 0 && colon < scope.length() - 1 && !STRUCTURAL.contains(scope);
+    }
+
     private final KeycloakSession session;
     private Configuration configuration = new Configuration();
 
@@ -110,7 +121,21 @@ public class ExchangeScopeIntersectionExecutor
         }
     }
 
-    /** Scopes carried by the subject token, or a refusal if it cannot be read. */
+    /**
+     * The authority a caller may draw on, or a refusal if it cannot be read.
+     *
+     * This is the human's ORIGINAL grant, not the inbound token's scope. The
+     * two differ from the second hop onward, and using the wrong one breaks the
+     * design in one direction or the other: intersecting against the inbound
+     * scope makes a multi-hop chain impossible, because each hop narrows its
+     * token to what it needs and the next hop legitimately needs something
+     * different. Intersecting against nothing at all was the original bug.
+     *
+     * So the ceiling travels: the act mapper stamps {@code del_scope} with what
+     * the human consented to at the first hop and carries it unchanged
+     * afterwards. Permissions may move sideways along the chain, but never past
+     * what the person authorised.
+     */
     private Set<String> scopesOf(String subjectToken) throws ClientPolicyException {
         if (subjectToken == null || subjectToken.isBlank()) {
             throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST,
@@ -127,7 +152,8 @@ public class ExchangeScopeIntersectionExecutor
                     "Subject token could not be parsed for scope evaluation",
                     Response.Status.BAD_REQUEST);
         }
-        String scope = token.getScope();
+        Object ceiling = token.getOtherClaims().get(ActSpiffeMapper.DELEGATION_CEILING);
+        String scope = (ceiling instanceof String s && !s.isBlank()) ? s : token.getScope();
         if (scope == null || scope.isBlank()) {
             return Set.of();
         }

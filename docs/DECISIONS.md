@@ -582,3 +582,29 @@ Proven by `scripts/check-scope-intersection.sh` (green) with `./infra/acceptance
 Evidence: check-scope-intersection.sh green (4 sections); acceptance.sh PASS post-change; Keycloak `KC-SERVICES0047` line confirming the executor factory loaded; source cites above from `specs/keycloak/`.
 
 Consequences: the M13 delegation-table executor extends this class rather than introducing a second enforcement point. The demo narrative may now claim scope intersection truthfully. `check-p3`'s fixture still holds (alice's default token lacks `mcp:audit`), and its positive direction is now covered here.
+
+---
+
+## D-032 — M12 green: the second hop exists and is required; EJBCA issuance is real, authenticated RA over mTLS
+
+Date: 2026-08-04 · Milestone: M12 · Author: claude-code (EJBCA setup script run agent-side with explicit human authorization this session)
+
+Proven by `scripts/check-m12.sh` (**M12 PASS**), with `./infra/acceptance.sh` **PASS** and `scripts/check-scope-intersection.sh` **PASS** re-run after, untouched:
+
+1. **The chain**: alice consents to `onboard:initiate` + `issue:employee-cert` → hop 1 gives agent-client a token with `scope=onboard:initiate` only (`act.sub`=agent-client) → agent-pki exchanges again and calls cert-service → a real certificate for `john-laptop` is issued by EJBCA (EvidenRoot) → cert-service logs `sub=alice` with the nested chain `agent-pki <- agent-client`. The assistant cannot reach cert-service directly (not allowlisted, wrong audience) and cannot obtain the issuing scope (DelegationTableExecutor: "'agent-client' may not carry issue:employee-cert") — neither agent can finish alone.
+
+2. **`del_scope` is a CEILING, not a permission — and the check must read the claims accordingly.** The hop-1 token carries alice's full consented set in `del_scope` (so hop 2 can still request `issue:employee-cert` under the consent ceiling) while the exercisable `scope` claim stays attenuated. Resource servers enforce `scope` alone. check-m12's original no-issuing-power assertion grepped the whole payload and false-failed on the ceiling claim; it now extracts the `scope` claim. Rule for future checks: assert on the claim a verifier actually consumes.
+
+3. **EJBCA 9.3.7's REST API authenticates every call** (probed, not recalled: plain 8080 → 302; 8443 without client cert → 403 "no client certificate or OAuth token received"). Design chosen: cert-service enrolls as a **registered RA** — end entity `ra-cert-service` on ManagementCA, P12 client keystore, role "Cert Service RA" with a minimal rule set modeled on the instance's own Public Access Role rules (read live, not recalled). No weakened EJBCA auth, no public-access shortcut. New human-run script `infra/pki/setup-employee-profile.sh` creates all of it plus the `employeeDevice` certificate/end-entity profiles (same generate-with-EJBCA's-own-classes technique as setup-ejbca.sh; there is still no CLI to create profiles). Contract files: `pki/ra/ra-cert-service.p12` + `pki/ra/ejbca-tls-ca.pem` (gitignored), mounted as a directory so the demo stack boots before the script has run — issuance fails loudly until then, never silently.
+
+4. **The EJBCA management plane is a fourth, separate trust relationship.** cert-service's outbound client builds explicit `PKIX` key/trust managers over the RA keystore + ManagementCA anchor — deliberately NOT `getDefaultAlgorithm()`, which CertServiceApplication overrides to "Spiffe" for the workload mTLS plane. First attempt used the defaults and java-spiffe's trust manager rejected EJBCA's cert ("does not contain SPIFFE ID in the URI SAN") — exactly the three-trust-store discipline doing its job; the fix is scoping, not weakening.
+
+5. **Two container warts found and fixed, both now guarded in the setup script**:
+   - The 8443 TLS keystore is minted per container hostname; compose now pins `hostname: ejbca` so the SAN is `DNS:ejbca` (Java hostname verification would otherwise fail against a random container id). The script verifies the SAN before exporting trust.
+   - Recreating the container raced init's `ca createtruststore` against the DB and left a 32-byte EMPTY `truststore.jks` — every TLS client cert then dies as a silent connection close with nothing in the application log. The script detects the empty store, rebuilds it in place with the password read from standalone.xml, and does a WildFly `:reload`.
+
+6. **Restart ordering matters for MCP sessions**: restarting cert-service kills agent-pki's MCP session ("MCP session with server terminated"); agent-pki must restart after. Existing compose `depends_on` encodes this for cold starts; for manual restarts, restart both.
+
+Evidence: check outputs in transcript; EJBCA audit log lines (CERTPROFILE_CREATION employeeDevice, RA_ADDENDENTITY/CERT_CREATION ra-cert-service, ROLE_ACCESS_RULE_CHANGE); curl/s_client probes for findings 3 and 5; cert-service FAILED stacks for finding 4.
+
+Consequences: M12's exit is met — the console sentence can issue a real certificate once the M13/M14 surface is wired to the UI. check-m13 (delegation-table rejections: audience, scope, depth) remains to be written; the executor it will test is already live and produced this session's escalation refusal. A cold reset now requires `setup-employee-profile.sh` after `setup-ejbca.sh`; README quickstart row owed when M12–M14 land in BUILD-PLAN (human-gated edit).

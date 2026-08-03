@@ -24,7 +24,8 @@ has_entry() {
 }
 
 # test-agent: permanent fixture for the D-009 act↔peer binding rejection (M9)
-for w in agent-client mcp-server test-agent; do
+# agent-pki / cert-service: the second hop and its protected service (M12)
+for w in agent-client mcp-server test-agent agent-pki cert-service; do
   ID="spiffe://ai-agent.id.eviden.internal/${w}"
   if has_entry "$ID"; then
     echo "entry exists: $ID"

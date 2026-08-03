@@ -6,14 +6,21 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.operator.ContentSigner;
@@ -47,9 +54,10 @@ public class EjbcaEnrollment {
     private final String certificateProfile;
     private final String enrollUsername;
     private final String enrollPassword;
-    private final HttpClient http = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private final String raKeystorePath;
+    private final String raKeystorePassword;
+    private final String tlsCaPath;
+    private volatile HttpClient http;
 
     public EjbcaEnrollment(
             @Value("${cert.ejbca.enroll-url}") String enrollUrl,
@@ -57,13 +65,73 @@ public class EjbcaEnrollment {
             @Value("${cert.ejbca.end-entity-profile}") String endEntityProfile,
             @Value("${cert.ejbca.certificate-profile}") String certificateProfile,
             @Value("${cert.ejbca.username}") String enrollUsername,
-            @Value("${cert.ejbca.password}") String enrollPassword) {
+            @Value("${cert.ejbca.password}") String enrollPassword,
+            @Value("${cert.ejbca.ra-keystore}") String raKeystorePath,
+            @Value("${cert.ejbca.ra-keystore-password}") String raKeystorePassword,
+            @Value("${cert.ejbca.tls-ca}") String tlsCaPath) {
         this.enrollUrl = enrollUrl;
         this.caName = caName;
         this.endEntityProfile = endEntityProfile;
         this.certificateProfile = certificateProfile;
         this.enrollUsername = enrollUsername;
         this.enrollPassword = enrollPassword;
+        this.raKeystorePath = raKeystorePath;
+        this.raKeystorePassword = raKeystorePassword;
+        this.tlsCaPath = tlsCaPath;
+    }
+
+    /**
+     * EJBCA's REST API refuses any request that does not authenticate (verified
+     * empirically against 9.3.7: 403 "no client certificate or OAuth token").
+     * cert-service therefore authenticates as a registered RA: client keystore
+     * issued by ManagementCA, server verified against ManagementCA — EJBCA's own
+     * management plane, distinct from all three SPIFFE/OIDC trust stores.
+     * Lazy: the credential files exist only after the human runs
+     * infra/pki/setup-employee-profile.sh; missing files fail the issuance
+     * loudly, never the service boot, and never fall back to plain HTTP.
+     */
+    private HttpClient raClient() throws Exception {
+        HttpClient client = http;
+        if (client != null) {
+            return client;
+        }
+        synchronized (this) {
+            if (http == null) {
+                if (!Files.isRegularFile(Path.of(raKeystorePath)) || !Files.isRegularFile(Path.of(tlsCaPath))) {
+                    throw new IllegalStateException("EJBCA RA credential missing (" + raKeystorePath + ", " + tlsCaPath
+                            + ") — run infra/pki/setup-employee-profile.sh (human-gated, CLAUDE.md §7)");
+                }
+                KeyStore keyStore = KeyStore.getInstance("PKCS12");
+                try (var in = Files.newInputStream(Path.of(raKeystorePath))) {
+                    keyStore.load(in, raKeystorePassword.toCharArray());
+                }
+                // NOT getDefaultAlgorithm(): CertServiceApplication#main overrides the
+                // JVM defaults to "Spiffe" for the workload mTLS plane. This is the
+                // EJBCA management plane — explicit standard PKIX managers.
+                KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX");
+                kmf.init(keyStore, raKeystorePassword.toCharArray());
+
+                KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                trustStore.load(null, null);
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                try (var in = Files.newInputStream(Path.of(tlsCaPath))) {
+                    int i = 0;
+                    for (var cert : cf.generateCertificates(in)) {
+                        trustStore.setCertificateEntry("ejbca-tls-ca-" + i++, cert);
+                    }
+                }
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance("PKIX");
+                tmf.init(trustStore);
+
+                SSLContext ssl = SSLContext.getInstance("TLS");
+                ssl.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+                http = HttpClient.newBuilder()
+                        .sslContext(ssl)
+                        .connectTimeout(Duration.ofSeconds(10))
+                        .build();
+            }
+            return http;
+        }
     }
 
     /** Issued certificate metadata — never the private key, never the PEM body. */
@@ -81,7 +149,7 @@ public class EjbcaEnrollment {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = raClient().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200 && response.statusCode() != 201) {
             throw new IllegalStateException(
                     "EJBCA enrollment failed: HTTP " + response.statusCode() + " " + response.body());

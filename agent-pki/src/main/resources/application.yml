@@ -1,0 +1,30 @@
+server:
+  port: 8445
+  ssl:
+    bundle: spiffe        # registered by SpiffeSslBundleConfig (D-006)
+    client-auth: need     # mTLS: no client SVID -> handshake rejected
+
+spring.ai.mcp.server:
+  name: eviden-pki-agent
+  version: 0.1.0
+  protocol: STREAMABLE    # endpoint /mcp
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/ai-agents
+          jwk-set-uri: http://keycloak:8080/realms/ai-agents/protocol/openid-connect/certs
+
+pki:
+  # Canonical resource identifier = required token audience for the FIRST hop.
+  resource-id: https://pki-agent.ai-agent.id.eviden.internal:8445
+  # Only the assistant may ask this agent to onboard someone. The certificate
+  # service is not here: this agent calls out to it, it never calls back.
+  allowed-spiffe-ids: spiffe://ai-agent.id.eviden.internal/agent-client
+  token-endpoint: http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token
+  issuer: http://keycloak:8080/realms/ai-agents
+  cert-service:
+    base-url: https://cert.ai-agent.id.eviden.internal:8444
+    spiffe-id: spiffe://ai-agent.id.eviden.internal/cert-service

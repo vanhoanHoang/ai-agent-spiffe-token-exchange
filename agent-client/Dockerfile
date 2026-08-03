@@ -11,6 +11,12 @@ COPY console/ .
 RUN npm run build
 
 FROM maven:3.9-eclipse-temurin-21 AS build
+# delegation-common carries the assertion-type URN and the exchange wire format
+# for every hop (CLAUDE.md §5); install it before the app that consumes it.
+WORKDIR /common
+COPY delegation-common/pom.xml .
+COPY delegation-common/src src
+RUN mvn -q -B -DskipTests install
 WORKDIR /app
 COPY agent-client/pom.xml .
 RUN mvn -q -B dependency:go-offline

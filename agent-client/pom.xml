@@ -72,6 +72,13 @@
             <!-- Pinned in docs/VERSIONS.md (D-006). Do not bump here. -->
             <version>0.8.17</version>
         </dependency>
+        <dependency>
+            <!-- The assertion-type URN and the exchange wire format live here,
+                 once, shared with the second hop (CLAUDE.md §5). -->
+            <groupId>internal.lab</groupId>
+            <artifactId>delegation-common</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>

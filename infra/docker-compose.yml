@@ -143,10 +143,71 @@ services:
       start_period: 40s
     networks: [lab]
 
+  # ---- two-hop delegation (M12) -------------------------------------------
+  # Neither of these publishes a host port: they are reached over the lab
+  # network by SPIFFE ID, and the only browser-facing surface stays the console.
+  #
+  # agent-pki holds no LLM. It is the privileged hop, and it is deterministic
+  # code on purpose (see AgentPkiApplication).
+  agent-pki:
+    profiles: [demo]
+    build:
+      context: ..                              # repo root: shares delegation-common
+      dockerfile: agent-pki/Dockerfile
+    labels:
+      org.lab.workload: agent-pki              # docker workload attestation selector
+    depends_on:
+      keycloak: { condition: service_healthy }
+      spire-agent: { condition: service_healthy }
+      cert-service: { condition: service_healthy }
+    environment:
+      SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
+    volumes:
+      - spire-agent-socket:/tmp/spire-agent/public:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8445"]
+      interval: 5s
+      retries: 24
+      start_period: 40s
+    networks:
+      lab:
+        aliases: [pki-agent.ai-agent.id.eviden.internal]
+
+  # The protected service. Its allowlist contains agent-pki and nothing else,
+  # which is what makes "the assistant cannot issue certificates" a fact about
+  # the deployment rather than a promise about behaviour.
+  cert-service:
+    profiles: [demo]
+    build:
+      context: ..
+      dockerfile: cert-service/Dockerfile
+    labels:
+      org.lab.workload: cert-service
+    depends_on:
+      keycloak: { condition: service_healthy }
+      spire-agent: { condition: service_healthy }
+    environment:
+      SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
+    volumes:
+      - spire-agent-socket:/tmp/spire-agent/public:ro
+      # RA credential for authenticated EJBCA REST enrollment. The directory
+      # (not single files) is mounted so the demo stack boots before the human
+      # has run setup-employee-profile.sh; issuance fails loudly until then.
+      - ./pki/ra:/opt/pki:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8444"]
+      interval: 5s
+      retries: 24
+      start_period: 40s
+    networks:
+      lab:
+        aliases: [cert.ai-agent.id.eviden.internal]
+
   # ---- profile: pki (M3+) -------------------------------------------------
   ejbca:
     profiles: [pki]
     image: keyfactor/ejbca-ce:9.3.7         # pinned per docs/VERSIONS.md (D-004)
+    hostname: ejbca                         # container init mints the TLS keystore per hostname; a stable name gives the 8443 cert SAN DNS:ejbca (M12: cert-service verifies it)
     ports: ["8083:8080", "8444:8443"]       # host 8081 collides with nothing, but keep clear of spire-server's in-net 8081 for sanity
     volumes:
       - ejbca-data:/mnt/persistent

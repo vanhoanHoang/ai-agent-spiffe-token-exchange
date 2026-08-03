@@ -13,6 +13,8 @@ exported here. Files are gitignored; regenerate anytime with `--force`.
 | `spire-intermediate.pem` | Name-constrained intermediate (permittedSubtrees: URI:spiffe://ai-agent.id.eviden.internal/) | human, M3 |
 | `spire-intermediate-key.pem` | Its key. chmod 600. NEVER committed (.gitignore'd) | human, M3 |
 | `chain.pem` | intermediate + root, in that order | human, M3 |
+| `ra/ra-cert-service.p12` | cert-service's RA client keystore for authenticated EJBCA REST enrollment. NEVER committed (`*.p12`) | human, M12 (`./setup-employee-profile.sh`) |
+| `ra/ejbca-tls-ca.pem` | ManagementCA cert — cert-service's trust anchor for EJBCA's 8443 (EJBCA management plane, not one of the three stack trust stores) | human, M12 (same script) |
 
 SPIRE `disk` UpstreamAuthority points at these container paths under /opt/spire/pki/.
 Agent: if a file is missing, stop and ask — do not generate a self-signed substitute silently.

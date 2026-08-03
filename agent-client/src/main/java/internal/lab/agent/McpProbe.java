@@ -34,8 +34,14 @@ final class McpProbe {
 
     static void run(String endpoint, String method, String toolName) throws Exception {
         String token = System.getenv().getOrDefault("TOKEN", "");
+        // Which peer this probe will accept. Defaults to the MCP server; the
+        // two-hop checks point it at the PKI agent or the certificate service.
+        // Still an explicit accepted-ID check, never a relaxed one — pointing
+        // it elsewhere changes WHO is trusted, not WHETHER anyone is.
+        SpiffeId peerId = SpiffeId.parse(
+                System.getenv().getOrDefault("PEER_SPIFFE_ID", MCP_SERVER_ID.toString()));
         try (X509Source source = DefaultX509Source.newSource()) {
-            Supplier<Set<SpiffeId>> accepted = () -> Collections.singleton(MCP_SERVER_ID);
+            Supplier<Set<SpiffeId>> accepted = () -> Collections.singleton(peerId);
             SSLContext ssl = SpiffeSslContextFactory.getSslContext(SslContextOptions.builder()
                     .x509Source(source)
                     .acceptedSpiffeIdsSupplier(accepted)
@@ -54,10 +60,14 @@ final class McpProbe {
                 return;
             }
 
+            // Tool arguments come from TOOL_ARGS (raw JSON object) when a tool
+            // needs them; the M9-era probes call argument-less tools and are
+            // unaffected.
+            String toolArgs = System.getenv().getOrDefault("TOOL_ARGS", "{}");
             String body = "tools/call".equals(method)
                     ? """
-                      {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"%s","arguments":{}}}"""
-                            .formatted(toolName)
+                      {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"%s","arguments":%s}}"""
+                            .formatted(toolName, toolArgs)
                     : """
                       {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}""";
             print(send(http, endpoint, token, body, sessionId));

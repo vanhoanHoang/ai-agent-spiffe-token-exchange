@@ -25,9 +25,15 @@ cert:
   # deliberately — adding it would let one agent complete the task alone.
   allowed-spiffe-ids: spiffe://ai-agent.id.eviden.internal/agent-pki
   ejbca:
-    enroll-url: http://ejbca:8080/ejbca/ejbca-rest-api/v1/certificate/pkcs10enroll
+    # 9.3.7's REST API authenticates every call: plain HTTP 8080 redirects (302)
+    # and 8443 refuses without a client certificate. cert-service is a registered
+    # RA — keystore + trust anchor produced by infra/pki/setup-employee-profile.sh.
+    enroll-url: https://ejbca:8443/ejbca/ejbca-rest-api/v1/certificate/pkcs10enroll
     ca-name: EvidenRoot
     end-entity-profile: employeeDevice
     certificate-profile: employeeDevice
     username: employee
     password: ${EJBCA_ENROLL_PASSWORD:enroll-lab}
+    ra-keystore: ${EJBCA_RA_KEYSTORE:/opt/pki/ra-cert-service.p12}
+    ra-keystore-password: ${EJBCA_RA_KEYSTORE_PASSWORD:enroll-lab}
+    tls-ca: ${EJBCA_TLS_CA:/opt/pki/ejbca-tls-ca.pem}
