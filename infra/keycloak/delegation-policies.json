@@ -1,0 +1,7 @@
+{"policies":[{
+  "name":"spiffe-delegation-policy",
+  "description":"Applies delegation rules to every client",
+  "enabled":true,
+  "conditions":[{"condition":"any-client","configuration":{}}],
+  "profiles":["spiffe-delegation"]
+}]}

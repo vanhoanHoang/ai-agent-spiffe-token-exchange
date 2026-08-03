@@ -140,29 +140,12 @@ done
 # Depth is read from the act chain, which only the AS ever writes, so a caller
 # cannot pass off a third hop as a first one.
 #
-# The table replaces the item-zero profile document and keeps its executor:
-# scope intersection (never grow) AND table conformance (stay on the route).
-PROFILE_JSON=$(cat <<'JSON'
-{"profiles":[{
-  "name":"spiffe-delegation",
-  "description":"Delegation rules for SPIFFE agents",
-  "executors":[
-    {"executor":"exchange-scope-intersection","configuration":{}},
-    {"executor":"delegation-table","configuration":{
-      "refuse-unlisted-actors":false,
-      "rows":[
-        {"actor":"agent-client","audiences":["agent-pki"],"scopes":["onboard:initiate","mcp:audit"],"max-depth":1},
-        {"actor":"agent-pki","audiences":["cert-service"],"scopes":["issue:employee-cert"],"max-depth":2}
-      ]
-    }}
-  ]
-}]}
-JSON
-)
-POLICY_JSON='{"policies":[{"name":"spiffe-delegation-policy","description":"Applies delegation rules to every client","enabled":true,"conditions":[{"condition":"any-client","configuration":{}}],"profiles":["spiffe-delegation"]}]}'
-
-echo "$PROFILE_JSON" | K update realms/ai-agents/client-policies/profiles -r ai-agents -f - >/dev/null
-echo "$POLICY_JSON" | K update realms/ai-agents/client-policies/policies -r ai-agents -f - >/dev/null
+# The document is SINGLE-OWNER: the JSON lives in delegation-{profiles,policies}.json
+# and is applied identically here and by setup-spiffe-idp.sh — kcadm replaces
+# the whole document, so two scripts with their own variants meant whichever
+# ran last silently deleted the other's executor (observed live).
+K update realms/ai-agents/client-policies/profiles -r ai-agents -f - < keycloak/delegation-profiles.json >/dev/null
+K update realms/ai-agents/client-policies/policies -r ai-agents -f - < keycloak/delegation-policies.json >/dev/null
 has delegation-table get realms/ai-agents/client-policies/profiles -r ai-agents \
   || { echo "FATAL: delegation-table executor did not register — is the SPI jar current?"; exit 1; }
 say "delegation table registered (agent-client -> agent-pki -> cert-service, depth 2)"

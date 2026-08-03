@@ -105,18 +105,20 @@ fi
 #
 # Client policies/profiles are realm-level JSON documents, not CRUD objects:
 # kcadm update realms/<realm>/client-policies/{profiles,policies} replaces the
-# whole document, which is idempotent by construction.
-PROFILE_JSON='{"profiles":[{"name":"spiffe-delegation","description":"Delegation rules for SPIFFE agents","executors":[{"executor":"exchange-scope-intersection","configuration":{}}]}]}'
-# The any-client condition is REQUIRED, not decoration: a policy whose
-# conditions list is empty matches NOTHING and is silently never applied
-# (DefaultClientPolicyManager.isSatisfied: "if conditions.isEmpty() return
-# false"). Registering the profile without it looks correct in the admin API
-# and enforces nothing — which is exactly how this was first written.
-POLICY_JSON='{"policies":[{"name":"spiffe-delegation-policy","description":"Applies delegation rules to every client","enabled":true,"conditions":[{"condition":"any-client","configuration":{}}],"profiles":["spiffe-delegation"]}]}'
-
-echo "$PROFILE_JSON" | K update realms/ai-agents/client-policies/profiles -r ai-agents -f - >/dev/null
-say "client profile spiffe-delegation registered (exchange-scope-intersection executor)"
-echo "$POLICY_JSON" | K update realms/ai-agents/client-policies/policies -r ai-agents -f - >/dev/null
+# whole document. That makes the content SINGLE-OWNER by necessity: this script
+# and setup-two-hop.sh both apply it, so the JSON lives in shared files
+# (delegation-{profiles,policies}.json). Two scripts carrying their own variants
+# meant whichever ran last silently deleted the other's executor — observed
+# live: a reset without setup-two-hop dropped the delegation table.
+#
+# The any-client condition in the policies file is REQUIRED, not decoration: a
+# policy whose conditions list is empty matches NOTHING and is silently never
+# applied (DefaultClientPolicyManager.isSatisfied: "if conditions.isEmpty()
+# return false"). It looked correct in the admin API and enforced nothing —
+# which is exactly how this was first written.
+K update realms/ai-agents/client-policies/profiles -r ai-agents -f - < keycloak/delegation-profiles.json >/dev/null
+say "client profile spiffe-delegation registered (intersection + delegation-table executors)"
+K update realms/ai-agents/client-policies/policies -r ai-agents -f - < keycloak/delegation-policies.json >/dev/null
 say "client policy spiffe-delegation-policy enabled (applies to all clients)"
 
 has exchange-scope-intersection get realms/ai-agents/client-policies/profiles -r ai-agents \

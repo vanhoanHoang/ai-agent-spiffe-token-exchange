@@ -19,6 +19,9 @@ case "$MODE" in
     (cd infra && docker compose --profile demo --profile pki --profile tools down -v)
     echo "Volumes gone. Re-running full setup (EJBCA hierarchy takes a while)..."
     bash infra/pki/setup-ejbca.sh
+    # M12: employee profiles + the RA credential for cert-service (this script
+    # is human-gated, but --cold is itself human-run, so chaining is in-bounds)
+    bash infra/pki/setup-employee-profile.sh --force
     ;;
   --full)
     (cd infra && docker compose --profile demo down) >/dev/null
@@ -37,6 +40,9 @@ bash infra/spire/register-workloads.sh >/dev/null
 bash infra/keycloak/setup-realm.sh >/dev/null
 bash infra/keycloak/setup-spiffe-idp.sh >/dev/null
 bash infra/keycloak/setup-demo-web.sh >/dev/null
-(cd infra && docker compose --profile demo up -d --wait --wait-timeout 300) >/dev/null
+bash infra/keycloak/setup-two-hop.sh >/dev/null
+# pki profile: ejbca must run for the M12 issuance leg (no healthcheck defined,
+# so --wait only sees "running"; cert-service reads its RA credential lazily).
+(cd infra && docker compose --profile demo --profile pki up -d --wait --wait-timeout 300) >/dev/null
 bash infra/ollama/pull-model.sh >/dev/null
-echo "RESET OK ($MODE) in $(( $(date +%s) - START ))s — stack + demo profile healthy, model present"
+echo "RESET OK ($MODE) in $(( $(date +%s) - START ))s — stack + demo + pki profiles up, model present"

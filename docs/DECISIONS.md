@@ -608,3 +608,28 @@ Proven by `scripts/check-m12.sh` (**M12 PASS**), with `./infra/acceptance.sh` **
 Evidence: check outputs in transcript; EJBCA audit log lines (CERTPROFILE_CREATION employeeDevice, RA_ADDENDENTITY/CERT_CREATION ra-cert-service, ROLE_ACCESS_RULE_CHANGE); curl/s_client probes for findings 3 and 5; cert-service FAILED stacks for finding 4.
 
 Consequences: M12's exit is met — the console sentence can issue a real certificate once the M13/M14 surface is wired to the UI. check-m13 (delegation-table rejections: audience, scope, depth) remains to be written; the executor it will test is already live and produced this session's escalation refusal. A cold reset now requires `setup-employee-profile.sh` after `setup-ejbca.sh`; README quickstart row owed when M12–M14 land in BUILD-PLAN (human-gated edit).
+
+---
+
+## D-033 — M13 green: the table is law; the client-policy document made single-owner after a live loss
+
+Date: 2026-08-04 · Milestone: M13 · Author: claude-code (user-directed continuation past the one-milestone default: "finish m13")
+
+Proven by `scripts/check-m13.sh` (**M13 PASS**), with `check-m12.sh`, `check-scope-intersection.sh`, and `./infra/acceptance.sh` all re-run **PASS** after the changes below:
+
+1. **The exit, asserted directly on the token**: a manually driven hop-2 exchange (agent-pki attested via the docker label selector, using the agent-client image's `svid` mode) yields `act = {sub: …/agent-pki, act: {sub: …/agent-client}}` with no deeper nesting, `sub` = alice, `aud` ∋ the cert-service resource URI, and scope attenuated to `issue:employee-cert` (hop-1's `onboard:initiate` gone). M12 proved the chain via cert-service's log; this proves the claim shape itself, parsed as JSON rather than grepped.
+
+2. **All three off-table classes are refused by the TABLE, not by coincidence** — every refusal must carry the executor's "Delegation refused" prefix or the check fails, which distinguishes table enforcement from Keycloak's generic errors:
+   - audience: agent-client requesting `audience=cert-service` → "may not delegate to cert-service";
+   - scope, isolated from the intersection layer: agent-pki requesting `onboard:initiate` with the hop-1 token as subject — alice consented it and the subject's ceiling carries it, so the D-031 intersection executor alone would allow it; only the table row forbids it → "may not carry onboard:initiate";
+   - depth, both actors: agent-pki re-exchanging the hop-2 token ("depth 3 exceeds the limit of 2") and agent-client re-exchanging the hop-1 token ("depth 2 exceeds the limit of 1"). Chains end.
+
+3. **Live failure found mid-milestone: the client-policies document had two owners.** kcadm `update realms/<realm>/client-policies/{profiles,policies}` replaces the WHOLE document. setup-spiffe-idp.sh (D-031, intersection only) and setup-two-hop.sh (intersection + table) each carried their own variant, so whichever ran last silently deleted the other's executor. Observed for real: Keycloak was rebuilt mid-session (container recreated; volume-less by design, D-028) and re-provisioned by a path that does not know setup-two-hop — the task scopes vanished ("Invalid scopes") and the delegation table was gone while the admin API still looked healthy. Fix: the JSON now lives in `infra/keycloak/delegation-{profiles,policies}.json` and both scripts apply the identical files; either order converges. This is the D-011/D-016 lesson in a new costume: realm-level documents, like `grep -q` pipelines, punish scripts that look idempotent per-script but interfere across scripts.
+
+4. **reset.sh now provisions the two-hop world**: `--soft`/`--full` run setup-two-hop.sh and bring up the `pki` profile alongside `demo` (EJBCA must run for the issuance leg; cert-service reads its RA credential lazily so ordering is forgiving); `--cold` chains `setup-employee-profile.sh --force` after setup-ejbca.sh — the script is human-gated, and --cold is itself human-run.
+
+5. Script wart for the record: the shared `decode()` helper ends in a guarded printf whose false branch (`[ $pad -gt 0 ] && …`) exits nonzero when padding is zero — piping `decode` output directly under `set -o pipefail` fails the pipeline even when the consumer succeeds. Capture into a variable first. check-m13 hit it; check-m12 dodged it by accident (command substitution swallows the status).
+
+Evidence: check outputs in transcript; the three refusal `error_description` strings above quoted from live responses; Keycloak container created-at timestamp vs. session timeline for finding 3.
+
+Consequences: M14 (acceptance grows the six use-case rejections) is the remaining two-hop milestone; check-m13's sections 2–4 are its rejection material for the exchange layer, and check-m12's direct-call/escalation sections cover the resource layer. The delegation table's content now changes in exactly one file.

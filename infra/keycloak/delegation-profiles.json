@@ -1,0 +1,14 @@
+{"profiles":[{
+  "name":"spiffe-delegation",
+  "description":"Delegation rules for SPIFFE agents",
+  "executors":[
+    {"executor":"exchange-scope-intersection","configuration":{}},
+    {"executor":"delegation-table","configuration":{
+      "refuse-unlisted-actors":false,
+      "rows":[
+        {"actor":"agent-client","audiences":["agent-pki"],"scopes":["onboard:initiate","mcp:audit"],"max-depth":1},
+        {"actor":"agent-pki","audiences":["cert-service"],"scopes":["issue:employee-cert"],"max-depth":2}
+      ]
+    }}
+  ]
+}]}
