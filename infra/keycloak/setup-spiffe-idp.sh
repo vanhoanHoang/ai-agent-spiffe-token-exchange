@@ -95,4 +95,31 @@ else
   K update "clients/$CID/optional-client-scopes/$AUD_SCOPE_ID" -r ai-agents
   K update "clients/$TC_ID/optional-client-scopes/$AUD_SCOPE_ID" -r ai-agents
 fi
-say "spiffe idp + agent-client ready (federated-jwt, token exchange, act mapper)"
+# ---- scope intersection at the exchange (workstream B executor) ----------
+# CLAUDE.md §2: effective permissions = user scopes ∩ agent allowed scopes.
+# Keycloak validates a requested scope against the REQUESTER's assigned scopes
+# only — the subject token's scopes are never consulted — so without this
+# policy an agent can request a scope the human never granted (proven live:
+# a scope-gated tool returned 200 for an unconsented user). The executor
+# refuses any exchange asking for more than the subject token carries.
+#
+# Client policies/profiles are realm-level JSON documents, not CRUD objects:
+# kcadm update realms/<realm>/client-policies/{profiles,policies} replaces the
+# whole document, which is idempotent by construction.
+PROFILE_JSON='{"profiles":[{"name":"spiffe-delegation","description":"Delegation rules for SPIFFE agents","executors":[{"executor":"exchange-scope-intersection","configuration":{}}]}]}'
+# The any-client condition is REQUIRED, not decoration: a policy whose
+# conditions list is empty matches NOTHING and is silently never applied
+# (DefaultClientPolicyManager.isSatisfied: "if conditions.isEmpty() return
+# false"). Registering the profile without it looks correct in the admin API
+# and enforces nothing — which is exactly how this was first written.
+POLICY_JSON='{"policies":[{"name":"spiffe-delegation-policy","description":"Applies delegation rules to every client","enabled":true,"conditions":[{"condition":"any-client","configuration":{}}],"profiles":["spiffe-delegation"]}]}'
+
+echo "$PROFILE_JSON" | K update realms/ai-agents/client-policies/profiles -r ai-agents -f - >/dev/null
+say "client profile spiffe-delegation registered (exchange-scope-intersection executor)"
+echo "$POLICY_JSON" | K update realms/ai-agents/client-policies/policies -r ai-agents -f - >/dev/null
+say "client policy spiffe-delegation-policy enabled (applies to all clients)"
+
+has exchange-scope-intersection get realms/ai-agents/client-policies/profiles -r ai-agents \
+  || { echo "FATAL: scope-intersection executor did not register — is the SPI jar in the image?"; exit 1; }
+
+say "spiffe idp + agent-client ready (federated-jwt, token exchange, act mapper, scope intersection)"

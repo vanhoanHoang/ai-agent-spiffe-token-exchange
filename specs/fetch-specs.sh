@@ -22,4 +22,16 @@ for s in SPIFFE-ID X509-SVID JWT-SVID SPIFFE_Trust_Domain_and_Bundle SPIFFE_Fede
   get "https://raw.githubusercontent.com/spiffe/spiffe/main/standards/${s}.md" "spiffe/${s}.md"
 done
 
+mkdir -p keycloak
+KC_TAG=26.6.0   # keep aligned with docs/VERSIONS.md
+for f in services/src/main/java/org/keycloak/protocol/oidc/tokenexchange/StandardTokenExchangeProvider.java \
+         services/src/main/java/org/keycloak/protocol/oidc/tokenexchange/AbstractTokenExchangeProvider.java \
+         services/src/main/java/org/keycloak/protocol/oidc/grants/TokenExchangeGrantType.java \
+         services/src/main/java/org/keycloak/protocol/oidc/endpoints/TokenEndpoint.java \
+         services/src/main/java/org/keycloak/protocol/oidc/TokenManager.java \
+         services/src/main/java/org/keycloak/services/util/DefaultClientSessionContext.java \
+         server-spi-private/src/main/java/org/keycloak/protocol/oidc/TokenExchangeContext.java; do
+  get "https://raw.githubusercontent.com/keycloak/keycloak/${KC_TAG}/${f}" "keycloak/$(basename "$f")"
+done
+
 echo "---- done. Also fetch manually (auth/format varies): MCP spec revision, EJBCA docs for the pinned version."

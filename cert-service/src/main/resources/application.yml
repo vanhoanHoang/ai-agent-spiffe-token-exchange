@@ -1,0 +1,33 @@
+server:
+  port: 8444
+  ssl:
+    bundle: spiffe        # registered by SpiffeSslBundleConfig (D-006)
+    client-auth: need     # mTLS: no client SVID -> handshake rejected
+
+spring.ai.mcp.server:
+  name: eviden-cert-service
+  version: 0.1.0
+  protocol: STREAMABLE    # endpoint /mcp
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/ai-agents
+          jwk-set-uri: http://keycloak:8080/realms/ai-agents/protocol/openid-connect/certs
+
+cert:
+  # Canonical resource identifier = required token audience.
+  resource-id: https://cert.ai-agent.id.eviden.internal:8444
+  # The allowlist is the whole point of the second hop: ONLY the PKI agent may
+  # reach this service. The assistant that talks to the human is absent here
+  # deliberately — adding it would let one agent complete the task alone.
+  allowed-spiffe-ids: spiffe://ai-agent.id.eviden.internal/agent-pki
+  ejbca:
+    enroll-url: http://ejbca:8080/ejbca/ejbca-rest-api/v1/certificate/pkcs10enroll
+    ca-name: EvidenRoot
+    end-entity-profile: employeeDevice
+    certificate-profile: employeeDevice
+    username: employee
+    password: ${EJBCA_ENROLL_PASSWORD:enroll-lab}

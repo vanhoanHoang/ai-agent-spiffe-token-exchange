@@ -522,3 +522,63 @@ Date: 2026-08-01 · Milestone: demo track · Author: claude-code (found by runni
 Evidence: full suite scoreboard in transcript (m2/m4 red pre-fix, green post-fix; failure outputs quoted); fresh bundle shown to contain exactly one anchor.
 
 Consequences: milestone checks are now all runnable against the evolved stack, not just the milestone-era stack. p2/p25/p3/p6 additionally require a clean working copy of acceptance.sh, so they gate on the migration commit.
+
+---
+
+## D-030 — Two-hop delegation use case adopted (M12–M14); Keycloak exchange internals verified from source; suspected gap in the consent-toggle positive path
+
+Date: 2026-08-03 · Milestone: planning (post-M11) · Author: claude-code
+
+Decision:
+
+1. **The employee-onboarding two-hop use case is adopted as `docs/USE-CASE-ONBOARDING.md`** (milestones M12 second hop / M13 delegation table / M14 acceptance). The draft arrived from a Claude chat with no access to this repo; it was rewritten against the stack as built: trust domain per D-028, existing `agent-client` as the assistant, new `agent-pki` (no LLM) and `cert-service` workloads, exchange mechanics per the source findings below. Its original "scope not inside the inbound token" rejection mechanism was **dropped as unimplementable** (finding 3) and replaced by the three-layer scope rule in the use-case doc.
+
+2. **Keycloak 26.6.0 token-exchange internals, read from source** (files fetched at tag into `specs/keycloak/`, fetch-specs.sh extended):
+   - **Client-policy hook exists on every exchange**: `TokenExchangeGrantType.process` fires `TokenExchangeRequestContext` through `session.clientPolicy()` before any provider runs (`TokenExchangeGrantType.java:83`). A custom client-policy executor is the sanctioned enforcement point for the M13 delegation table (actor→audience, scope caps, depth via the subject token's `act` chain) — no fork of the exchange provider.
+   - **Chained exchange is handled natively**: when the subject token was itself produced by exchange, the provider copies `TOKEN_EXCHANGE_SUBJECT_CLIENT*` client-session notes forward and records the new subject client (`StandardTokenExchangeProvider.java:263-281`) — the session accumulates the delegation chain. Basis for nesting `act` in the mapper (primary mechanism: parse the `subject_token` form param during the exchange request; VERIFY items in the use-case doc).
+   - **Scope narrowing is requester-side only**: `getRequestedScope` validates the `scope` param against the requester client's assigned scopes (`TokenManager.isValidScope(session, scope, client, null)`), `validateConsents` checks consent for the requester client, and **nothing in the standard path sets `restrictedScopes`** (context constructed without it in `TokenExchangeGrantType`; no setter call anywhere in the path; when null, `DefaultClientSessionContext.isAllowed` applies no restriction). **The subject token's scopes are never consulted.** "Permissions shrink along the chain" must be enforced by the M13 executor or it does not exist.
+   - Confirmed from the same files (already known from D-008): requester must be in the subject token's `aud` (`validateAudience` → `forbiddenIfClientIsNotWithinTokenAudience`); the `audience` param resolves target clients and `checkRequestedAudiences` only verifies the requested audience is present in the generated token — it adds nothing.
+
+3. **CONFIRMED LIVE — the one architectural rule is currently violated (CLAUDE.md §2: "effective permissions wider than `user scopes ∩ agent allowed scopes`" is forbidden).** Predicted from finding 2, then proven against the running stack (2026-08-03, post-migration --full reset). Three probes, alice via `test-caller`:
+
+   | Probe | Subject token scope | `scope` param at exchange | Exchanged token scope |
+   |---|---|---|---|
+   | A | **with** `mcp:audit` (consented) | none (current code) | `mcp-audience profile email` — **`mcp:audit` LOST** |
+   | B | **without** `mcp:audit` (not consented) | `mcp:audit` | `… mcp:audit` — **GAINED** |
+   | C | with `mcp:audit` | `mcp:audit` | `… mcp:audit` |
+
+   Probe A: the consent toggle's positive direction is dead — consenting changes nothing about what the agent can do, because the exchange sends no `scope`. Only the refusal was ever check-proven (check-p3), so this shipped unnoticed.
+
+   Probe B is the security bug: the agent obtains a scope **the human never granted**, and it is not theoretical — presenting that token to the MCP server, `read_audit_log` returned **HTTP 200 with real audit entries**. The subject token's scopes are never consulted (finding 2), so the effective permission set is the *agent's* assigned scopes alone. The intersection in CLAUDE.md §2 is not enforced anywhere today.
+
+   Not a Keycloak defect: `mcp:audit` is an optional scope legitimately assigned to agent-client, and agent-client has `consentRequired=false` (a service client), so `validateConsents` has nothing to check. The lab's model assumed an intersection the AS was never asked to compute.
+
+   **Fix is item zero, before M12.** Two layers, both wanted: (i) agent-client requests `scope` explicitly at the exchange, derived from the subject token's own `scope` claim (fixes probe A, makes consent load-bearing); (ii) the M13 client-policy executor enforces requested ⊆ subject-token scopes for real (fixes probe B — a client-side fix alone is not enforcement, since the escalating request is exactly what a compromised agent would send). Until (ii) lands, item (i) plus removing `mcp:audit` from agent-client's optional scopes is the containment. The M14 acceptance gains a rejection for probe B, and check-p3 gains the missing positive-direction assertion.
+
+Evidence: pinned sources in `specs/keycloak/` (file:line cites above); `agent-client/.../TokenRequest.java:53-64` (no scope param); `infra/keycloak/setup-spiffe-idp.sh:86-97` (mcp:audit optional on agent-client); check-p3.sh:35-59 (negative-only assertions); probe transcript this session, including the HTTP 200 audit-log read with alice unconsented.
+
+Consequences: BUILD-PLAN gains M12–M14 when the human folds them in (BUILD-PLAN edit deliberately left to the human alongside the veto window on this adoption). Workstream B grows a second component class (client-policy executor), now load-bearing rather than a niceity — it is the only place the §2 intersection can actually be enforced. The EJBCA enrollment leg makes the human-led PKI path critical again at M12. The demo narrative must not claim scope intersection until the fix lands.
+
+---
+
+## D-031 — Item zero landed: the scope intersection is now enforced at the AS (fixes the D-030 finding-3 escalation)
+
+Date: 2026-08-04 · Milestone: pre-M12 · Author: claude-code (user-directed: "okay build")
+
+Proven by `scripts/check-scope-intersection.sh` (green) with `./infra/acceptance.sh` re-run **PASS**:
+
+1. **New client-policy executor `exchange-scope-intersection`** (`keycloak-spiffe-spi/`, workstream B's second component). It refuses any token exchange whose requested `scope` is not already carried by the subject token. This is the only place the CLAUDE.md §2 intersection can be enforced: Keycloak validates a requested scope against the *requester client's* assigned scopes and consent, never against the subject token (D-030 finding 2). Registered via the client-policies SPI, which fires on every exchange (`TokenExchangeGrantType.java:83`).
+
+2. **The executor parses an as-yet-unverified subject token, and that is sound here** — documented at the class, because it looks like a violation and is not. Policies run *before* `AuthenticationManager.verifyIdentityToken`; the same token string is verified moments later and a failure aborts the request. So a forged subject token cannot buy a wider scope, only a rejected request. A parse failure is a REFUSAL (no catch-and-permit).
+
+3. **`conditions: []` means the policy matches NOTHING.** `DefaultClientPolicyManager.isSatisfied:88-91` returns false for an empty condition list, so the first registration enforced nothing while looking correct in the admin API — the check caught it. The `any-client` condition is now mandatory and commented as such in `setup-spiffe-idp.sh`.
+
+4. **agent-client now requests the delegated scope explicitly**, derived from the subject token's own `scope` claim, which is what makes alice's consent load-bearing (before: consenting changed nothing, because no `scope` was sent). Asking is not authorization — the executor still bounds it.
+
+5. **Scope naming convention, forced by a real failure**: only `ns:verb` scopes travel across an exchange. Acceptance failed with `Invalid scopes: agent-audience mcp-audience` — audience-carrier scopes belong to the *user's* client, not the agent's, and Keycloak refuses a scope the requester is not assigned. Bare scopes are client configuration (audience carriers, OIDC claim sets); `ns:verb` names delegated authority. This convention is now load-bearing for M12/M13, whose scopes are `onboard:initiate` and `issue:employee-cert`.
+
+6. **Both directions are asserted**, deliberately: the check fails if consent does NOT reach the exchanged token, and fails if an unconsented scope DOES. The original bug shipped precisely because only the refusal was ever checked.
+
+Evidence: check-scope-intersection.sh green (4 sections); acceptance.sh PASS post-change; Keycloak `KC-SERVICES0047` line confirming the executor factory loaded; source cites above from `specs/keycloak/`.
+
+Consequences: the M13 delegation-table executor extends this class rather than introducing a second enforcement point. The demo narrative may now claim scope intersection truthfully. `check-p3`'s fixture still holds (alice's default token lacks `mcp:audit`), and its positive direction is now covered here.
