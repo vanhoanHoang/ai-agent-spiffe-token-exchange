@@ -39,9 +39,10 @@ npm's cmd shims if you ever build the console on the host).
 # 1. one-time gitignored artifacts (never leave a machine)
 bash infra/spire/gen-bootstrap.sh        # node-attestation bootstrap CA
 bash infra/pki/setup-ejbca.sh            # EJBCA hierarchy + name-constrained intermediate (minutes)
+bash infra/pki/setup-employee-profile.sh # M12: employee profiles + cert-service's RA credential
 
 # 2. everything else: image builds (incl. console), services, SPIRE registrations,
-#    Keycloak realm, demo profile, model pull
+#    Keycloak realm (incl. two-hop delegation), demo + pki profiles, model pull
 bash demo/reset.sh --full
 
 # 3. verify before demoing (clock skew, health, model, full acceptance)
