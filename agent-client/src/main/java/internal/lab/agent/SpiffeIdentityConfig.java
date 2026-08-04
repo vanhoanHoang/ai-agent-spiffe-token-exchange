@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Configuration;
 public class SpiffeIdentityConfig {
 
     static final SpiffeId MCP_SERVER_ID = SpiffeId.parse("spiffe://ai-agent.id.eviden.internal/mcp-server");
+    static final SpiffeId AGENT_PKI_ID = SpiffeId.parse("spiffe://ai-agent.id.eviden.internal/agent-pki");
 
     @Bean(destroyMethod = "close")
     X509Source x509Source() throws Exception {
@@ -43,7 +44,22 @@ public class SpiffeIdentityConfig {
      */
     @Bean
     SSLContext spiffeSslContext(X509Source source) throws Exception {
-        Supplier<Set<SpiffeId>> accepted = () -> Collections.singleton(MCP_SERVER_ID);
+        return acceptingOnly(source, MCP_SERVER_ID);
+    }
+
+    /**
+     * mTLS to the PKI agent — the second hop's entry point (M12/D-032). It is a
+     * SEPARATE context on purpose: each one accepts exactly one peer, so a
+     * misrouted call fails the handshake instead of reaching the wrong
+     * workload with a valid token.
+     */
+    @Bean
+    SSLContext pkiSslContext(X509Source source) throws Exception {
+        return acceptingOnly(source, AGENT_PKI_ID);
+    }
+
+    private static SSLContext acceptingOnly(X509Source source, SpiffeId peer) throws Exception {
+        Supplier<Set<SpiffeId>> accepted = () -> Collections.singleton(peer);
         return SpiffeSslContextFactory.getSslContext(SslContextOptions.builder()
                 .x509Source(source)
                 .acceptedSpiffeIdsSupplier(accepted)

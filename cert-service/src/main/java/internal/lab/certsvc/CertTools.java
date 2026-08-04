@@ -68,7 +68,11 @@ public class CertTools {
                     "not_after", issued.notAfter(),
                     "fingerprint_sha256", issued.fingerprintSha256(),
                     "requested_by_human", String.valueOf(jwt.getSubject()),
-                    "delegation_chain", chain);
+                    "delegation_chain", chain,
+                    // The certificate itself, so the human who asked for it can
+                    // actually see and keep it. Public material: the key that
+                    // would make it usable was discarded at issuance.
+                    "certificate_pem", issued.pem());
         } catch (Exception e) {
             // No fallback issuance. A failure here is reported as a failure.
             log.error("tool=issue_employee_cert FAILED cn={} sub={} chain={}", cn, jwt.getSubject(), chain, e);

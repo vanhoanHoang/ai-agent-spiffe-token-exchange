@@ -138,3 +138,59 @@ svg {
   font-size: 22px;
   fill: var(--text-primary);
 }
+
+/* ── second hop (M12/D-032) ── */
+
+/* Workloads that exist but took no part in this run: dimmed, never hidden.
+   The topology is a constant; participation is what changes. */
+.node {
+  transition: opacity 260ms ease;
+}
+
+.node.dim {
+  opacity: 0.26;
+}
+
+/* The scope a workload may hold, on the node itself — non-overlap is then
+   visible in the picture rather than asserted in prose. */
+.scope-pill {
+  fill: var(--custody-badge-bg);
+  stroke: var(--id-workload);
+  stroke-width: 1.5;
+}
+
+.scope-text {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  fill: var(--custody-badge-text);
+}
+
+/* The refused path is DRAWN, always. It is the strongest thing on the
+   diagram and it must not appear only on failure. */
+.edge.forbidden {
+  stroke: var(--verdict-deny);
+  stroke-dasharray: 9 7;
+  opacity: 0.45;
+}
+
+.edge.forbidden.on {
+  opacity: 1;
+}
+
+.forbidden-lbl {
+  fill: var(--verdict-deny);
+  font-size: 16px;
+}
+
+.xbg {
+  fill: var(--surface-panel);
+  stroke: var(--verdict-deny);
+  stroke-width: 2;
+}
+
+.xmark {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  fill: var(--verdict-deny);
+}

@@ -134,9 +134,22 @@ public class EjbcaEnrollment {
         }
     }
 
-    /** Issued certificate metadata — never the private key, never the PEM body. */
+    /**
+     * The issued certificate: metadata plus the certificate PEM — and NEVER the
+     * private key.
+     *
+     * The key is generated here for the CSR and discarded when this method
+     * returns; it is never stored, returned, or logged. That is not a lab
+     * shortcut being papered over: a certificate is public by construction, so
+     * shipping it downstream for inspection costs nothing, while the key that
+     * would make it usable does not survive issuance at all.
+     *
+     * (D-036 reversed the earlier "never the PEM body" line: the console needs
+     * the certificate to render and offer it, and there was never a secret in
+     * it. The private key remains as absent as before.)
+     */
     public record Issued(String subjectDn, String issuerDn, String serial, String notBefore, String notAfter,
-            String fingerprintSha256) {
+            String fingerprintSha256, String pem) {
     }
 
     public Issued issue(String commonName) throws Exception {
@@ -209,6 +222,14 @@ public class EjbcaEnrollment {
                 cert.getSerialNumber().toString(16).toUpperCase(),
                 cert.getNotBefore().toInstant().toString(),
                 cert.getNotAfter().toInstant().toString(),
-                hex.toString());
+                hex.toString(),
+                pem(cert));
+    }
+
+    /** The certificate, PEM-encoded — what `openssl x509 -text -in` reads. */
+    private static String pem(X509Certificate cert) throws Exception {
+        String body = Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII))
+                .encodeToString(cert.getEncoded());
+        return "-----BEGIN CERTIFICATE-----\n" + body + "\n-----END CERTIFICATE-----\n";
     }
 }

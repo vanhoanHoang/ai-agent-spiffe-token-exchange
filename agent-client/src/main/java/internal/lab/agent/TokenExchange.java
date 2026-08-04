@@ -1,9 +1,11 @@
 package internal.lab.agent;
 
+import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import internal.lab.delegation.DelegatedExchange;
 import io.spiffe.svid.jwtsvid.JwtSvid;
 import io.spiffe.workloadapi.JwtSource;
 import org.springframework.stereotype.Component;
@@ -18,17 +20,45 @@ import org.springframework.stereotype.Component;
 @Component
 public class TokenExchange {
 
-    private static final Pattern ACCESS_TOKEN = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
+    /**
+     * The delegated authorities this agent is allowed to carry. Alice may grant
+     * more than that — since M12 her consent covers the whole chain, including
+     * {@code issue:employee-cert}, which belongs to the PKI agent and not to
+     * this one. Forwarding everything she granted asks for a scope this client
+     * may never hold, and the authorization server answers exactly that:
+     * {@code Delegation refused: 'agent-client' may not carry
+     * issue:employee-cert}.
+     *
+     * So the request is narrowed to {@code her scopes ∩ ours} — the same
+     * intersection CLAUDE.md §2 names. This is politeness, not enforcement:
+     * the delegation-table executor refuses an over-broad ask regardless, and
+     * that refusal is what the security model rests on (D-031).
+     */
+    private static final String DEFAULT_DELEGATABLE = "onboard:initiate mcp:audit";
 
     private final JwtSource jwtSource;
     private final String tokenEndpoint;
     private final String issuerIdentifier;
+    private final Set<String> delegatable;
 
     TokenExchange(JwtSource jwtSource) {
         this.jwtSource = jwtSource;
         this.tokenEndpoint = System.getenv().getOrDefault("TOKEN_ENDPOINT",
                 "http://keycloak:8080/realms/ai-agents/protocol/openid-connect/token");
         this.issuerIdentifier = System.getenv().getOrDefault("ISSUER", "http://keycloak:8080/realms/ai-agents");
+        this.delegatable = Arrays.stream(
+                        System.getenv().getOrDefault("AGENT_DELEGATABLE_SCOPES", DEFAULT_DELEGATABLE).split("[ ,]+"))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /** What this agent may ask for, given what the human actually granted. */
+    private String requestedScope(String subjectToken) {
+        return Arrays.stream(DelegatedExchange.delegatedScope(subjectToken).split("\\s+"))
+                .filter(s -> !s.isBlank())
+                .filter(delegatable::contains)
+                .reduce((a, b) -> a + " " + b)
+                .orElse("");
     }
 
     String exchange(String subjectToken) throws Exception {
@@ -45,16 +75,18 @@ public class TokenExchange {
         events.accept(new StepEvent("svid",
                 "JWT-SVID minted for " + svid.getSpiffeId() + " (aud=" + issuerIdentifier + ")"));
 
-        TokenRequest.Response res = TokenRequest.post(svid, tokenEndpoint, subjectToken);
+        String scope = requestedScope(subjectToken);
+        DelegatedExchange.Response res = DelegatedExchange.post(svid, tokenEndpoint, subjectToken, scope);
         if (res.status() != 200) {
             throw new IllegalStateException("token exchange failed: HTTP " + res.status() + " " + res.body());
         }
-        Matcher m = ACCESS_TOKEN.matcher(res.body());
-        if (!m.find()) {
+        String token = res.accessToken();
+        if (token == null) {
             throw new IllegalStateException("token exchange response carries no access_token");
         }
         events.accept(new StepEvent("exchange",
-                "RFC 8693 exchange done: sub=alice's subject, act.sub=" + svid.getSpiffeId()));
-        return m.group(1);
+                "RFC 8693 exchange done: act.sub=" + svid.getSpiffeId()
+                        + (scope.isEmpty() ? "" : ", scope=" + scope)));
+        return token;
     }
 }

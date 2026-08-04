@@ -37,7 +37,7 @@
           {{ playing() ? '■ stop' : '▶ play the flow' }}
         </button>
       </div>
-      <dc-flow-diagram [stage]="stageId()" />
+      <dc-flow-diagram [stage]="stageId()" [hops]="liveHops()" />
     </section>
 
     @if (view() === 'live') {
@@ -47,7 +47,10 @@
             <h2>Live agent</h2>
             <span class="rule"></span>
           </div>
-          <dc-live-chat [user]="u" (inspect)="inspect($event)" />
+          <dc-live-chat [user]="u" (inspect)="inspect($event)" (reached)="follow($event)" />
+          @if (issuedCert(); as c) {
+            <dc-issued-cert [cert]="c" />
+          }
         </section>
       } @else {
         <section class="guest-note">

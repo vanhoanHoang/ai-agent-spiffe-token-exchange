@@ -75,7 +75,8 @@ public class OnboardingTools {
         log.info("tool=onboard_employee sub={} act={} device={}", human, inbound.getClaim("act"), device);
 
         try {
-            String delegated = exchangeForCertService(inbound.getTokenValue(), human);
+            JwtSvid svid = jwtSource.fetchJwtSvid(issuerIdentifier);
+            String delegated = exchangeForCertService(svid, inbound.getTokenValue(), human);
             bearer.set(delegated);
             try {
                 Map<String, Object> issued = callCertService(device);
@@ -84,6 +85,14 @@ public class OnboardingTools {
                         "onboarded", true,
                         "device", device,
                         "certificate", issued,
+                        // The second hop, reported by the workload that actually
+                        // performed it. The caller relays these facts to its
+                        // console rather than narrating a hop it never witnessed
+                        // (D-034) — a console must not describe work it cannot see.
+                        "hop2", Map.of(
+                                "actor", svid.getSpiffeId().toString(),
+                                "scope", ISSUE_SCOPE,
+                                "tool", "issue_employee_cert"),
                         "note", "issued by the certificate service, which this agent reached "
                                 + "with a token exchanged for that purpose alone");
             } finally {
@@ -101,8 +110,7 @@ public class OnboardingTools {
      * client credential, which is what makes it the actor. The requested scope
      * is the one this hop needs and no more.
      */
-    private String exchangeForCertService(String inboundToken, String human) throws Exception {
-        JwtSvid svid = jwtSource.fetchJwtSvid(issuerIdentifier);
+    private String exchangeForCertService(JwtSvid svid, String inboundToken, String human) throws Exception {
         DelegatedExchange.Response res =
                 DelegatedExchange.post(svid, tokenEndpoint, inboundToken, ISSUE_SCOPE);
         if (res.status() != 200) {

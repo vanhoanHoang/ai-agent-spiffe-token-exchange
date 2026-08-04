@@ -117,7 +117,11 @@ public class ChatApiController {
             throw new IllegalArgumentException(client == null ? "session_expired" : "empty_message");
         }
         String subjectToken = client.getAccessToken().getTokenValue();
-        SseEmitter emitter = new SseEmitter(300_000L);
+        // A tool-calling turn is at least two model round-trips, and the demo
+        // default is a small local model on CPU (~5 tok/s). Five minutes ran
+        // out mid-turn and the browser saw a dead stream with no explanation;
+        // the ceiling exists to bound a hang, not to race the model.
+        SseEmitter emitter = new SseEmitter(900_000L);
         streams.execute(() -> {
             try {
                 String answer = loop.ask(subjectToken, question,

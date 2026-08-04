@@ -633,3 +633,85 @@ Proven by `scripts/check-m13.sh` (**M13 PASS**), with `check-m12.sh`, `check-sco
 Evidence: check outputs in transcript; the three refusal `error_description` strings above quoted from live responses; Keycloak container created-at timestamp vs. session timeline for finding 3.
 
 Consequences: M14 (acceptance grows the six use-case rejections) is the remaining two-hop milestone; check-m13's sections 2–4 are its rejection material for the exchange layer, and check-m12's direct-call/escalation sections cover the resource layer. The delegation table's content now changes in exactly one file.
+
+---
+
+## D-034 — The console can tell the second hop; hop attribution is derived, not awaited
+
+Date: 2026-08-04 · Milestone: demo track (post-M13) · Author: claude-code (user-directed: "build it")
+
+Proven by `scripts/check-console.sh` (**CONSOLE PASS**, 56 tests, lint clean).
+
+1. **The architecture diagram is extended, not replaced** (user-directed, after a from-scratch "delegation ladder" was built and rejected). `flow-diagram` keeps its edge/packet/label/node classes and its SMIL `animateMotion`, and gains `agent-pki`, `cert-service`, the hop-2 exchange arc, per-node **scope pills** (so the non-overlap is visible in the picture rather than asserted in prose), and node dimming for workloads a given run never touched. Existing edge ids (`p-exch`, `p-call`) were deliberately kept so the prior spec still asserts something true.
+
+2. **The refused path is DRAWN, always.** `agent-client → cert-service` is a dashed `--verdict-deny` edge with an ✗, present from first paint and lit at the `refused` stage. Rationale, now an exit assertion: an edge nobody can see proves nothing to an audience — omission and refusal look identical on screen.
+
+3. **Hop attribution is derived from the event sequence** (`core/hops.ts`), so the console did not have to wait on a server change. The invariant it rests on is real, not assumed: `TokenExchange.exchange` emits `svid` then `exchange`, in that order, exactly once per call (`agent-client/.../TokenExchange.java:45-56`). So **an `svid` opens a hop**. Single-hop runs stay entirely in hop 1; the two-hop stream splits 1/1/1/2/2/2. Derivation is a **fallback only** — `RawChainEvent.hop` is honored when present and wins outright, because the server is the authority on its own chain.
+
+4. **The live trace is grouped by hop, replacing the flat five-chip rail.** A flat list can show that *more* happened; only the grouping shows that *somebody else* happened. Hop 2's group is indented and rule-marked — the nesting on screen mirrors the nesting in the `act` claim.
+
+5. **`check-console.sh` gained section 6**: the second hop's workloads must reach the bundle, and `forbidden` must be drawn. Written before the implementation and watched fail (zero occurrences of `agent-pki`, `cert-service`, `forbidden` anywhere in `console/src`).
+
+**Owed, and NOT done here — the chat cannot yet drive the two-hop flow.** `McpToolsConfig` builds a single `McpSyncClient` bound to `MCP_BASE_URL` (`agent-client/.../McpToolsConfig.java:29`), so the LLM cannot reach `onboard_employee` on agent-pki; only `check-m12.sh` can. Three things close it, and only the second is real work: (i) a second `McpSyncClient` for agent-pki handed to `SyncMcpToolCallbackProvider`; (ii) **`BearerHolder` becoming per-tool-target rather than per-message** — the two targets need different `aud`, so the exchange must move inside the tool-call boundary; (iii) `StepEvent` gaining a hop field, at which point item 3's derivation steps aside. Until (i)/(ii) land, the console renders two hops correctly but will only ever *receive* one.
+
+Evidence: `scripts/check-console.sh` CONSOLE PASS; `console/src/app/core/hops.spec.ts` (7 cases incl. explicit-hop override and mid-flight stream); `flow-diagram.spec.ts` (refused path present-but-unlit, then lit); `live-chat.spec.ts` (two groups, second named `agent-pki`); `console-page.spec.ts` (diagram follows the chain to the issuance edge, and a single-hop run does not light it).
+
+Consequences: console surfaces for the second hop no longer block on the backend. The demo narrative may show the delegation chain truthfully from a real stream the moment agent-pki's events are forwarded. Nothing in `agent-client/`, `keycloak-spiffe-spi/`, or `infra/` was touched — the seam is exactly the three items above.
+
+---
+
+## D-035 — The chatbox drives the two-hop use case; the per-target token turned out to be unnecessary
+
+Date: 2026-08-04 · Milestone: demo track (post-M13) · Author: claude-code (user-directed: "we said we use chatbot to drive this use case")
+
+Proven by `scripts/check-m12-chat.sh` (**M12-CHAT PASS**), with `infra/acceptance.sh` **PASS**, `check-m12.sh` **PASS** and `check-console.sh` **PASS** alongside.
+
+Alice types one sentence into the console. The model picks `onboard_employee` itself, the assistant delegates to the PKI agent, and a real `john-laptop` certificate comes back with the nested chain — all visible as two hops in the live trace.
+
+1. **D-034's "the real work is a per-tool-target bearer" was WRONG, and pleasantly so.** One exchanged token already addresses both targets: `pki-audience` and `mcp-audience` are both **default** client scopes on agent-client (`setup-two-hop.sh:101`), so a single hop-1 token carries both audiences. `BearerHolder` is unchanged. What genuinely differs per target is the *peer*, so each MCP client gets its own `SSLContext` accepting exactly one SPIFFE ID — a misrouted call then fails the handshake instead of arriving somewhere valid with a good token.
+
+2. **The agent must ask for what it may carry, not for everything the human granted.** Since alice now consents to both task scopes at login, `DelegatedExchange.delegatedScope` forwarded `issue:employee-cert` too, and the AS refused exactly as designed: `Delegation refused: 'agent-client' may not carry issue:employee-cert`. The fix narrows the request to **her scopes ∩ ours** (`AGENT_DELEGATABLE_SCOPES`, default `onboard:initiate mcp:audit`). This is politeness, not enforcement — the delegation-table executor refuses an over-broad ask regardless, and that refusal is what the model rests on (D-031). The failure is worth keeping in mind: *widening consent broke the agent*, because the agent forwarded consent verbatim.
+
+3. **The second hop is reported, never narrated.** agent-pki returns a `hop2` block (`actor`, `scope`, `tool`) describing the exchange it performed; agent-client relays those facts as a fresh svid/exchange/tool triple and emits **nothing** when the block is absent. agent-client cannot witness an exchange happening inside another workload, and a console that narrated one would be showing a plausible lie — the same rule as the fail-closed capture parser.
+
+4. **The console needed zero changes.** D-034's derivation ("an `svid` opens a hop") does the work: two svid+exchange pairs arrive and the trace splits 1/1/1/2/2/2 with the diagram following to the issuance edge. The forward-compatible design paid off exactly as intended.
+
+5. **Login now requests the two task scopes** so the consent screen offers them (`application-web.properties`). Without that the use case is unreachable from a browser: the agent could ask for `onboard:initiate` forever and the AS would refuse, because the human never granted it.
+
+6. **The system prompt now forbids describing unperformed steps.** Before this change the model answered "Onboard John" with a fluent, invented procedure — create a SPIFFE identity for John, add him to the workload allowlist — which inverts the one architectural rule (§2: John is a human; SPIFFE is workload identity). It had only mcp-server's tools and no way to act, so it narrated. Reachable tools plus an explicit instruction replaced the hallucination with a real call.
+
+Two warts for whoever writes the next check:
+- The `hop2` JSON arrives with **escaped quotes** (`\"actor\":\"…\"`) — tool output is JSON travelling inside a JSON text content. The relay regex tolerates both forms rather than depending on how many layers the SDK peeled.
+- **`MSYS2_ARG_CONV_EXCL='*'` breaks the scripted browser login** on Git Bash: the flow silently ends unauthenticated. Run browser-flow checks without it. A relative form action must also resolve against `keycloak:8080`, not `localhost:8080`, or the consent POST drops its session cookies.
+
+Evidence: check-m12-chat.sh PASS (5 sections); the live stream showing `svid → exchange → tool(onboard_employee) → svid → exchange → tool(issue_employee_cert) → answer`; cert-service `ISSUED cn=john-laptop … chain=…/agent-pki <- …/agent-client`; acceptance/M12/console suites re-run green after the change.
+
+Consequences: BUILD-PLAN M10's exit criterion #2 is now demonstrable through the console rather than only by script — the model can attempt the escalation and be refused in front of an audience. D-034's owed item is closed except for the optional `StepEvent` hop field, which is no longer needed: the relay produces the sequence the console already reads correctly.
+
+---
+
+## D-036 — The issued certificate is visible and downloadable; the private key still does not exist
+
+Date: 2026-08-04 · Milestone: demo track (post-D-035) · Author: claude-code (user-directed: "download and view certificates with openssl style")
+
+Proven by `check-m12-chat.sh` **PASS**, `check-console.sh` **PASS**, and `openssl x509` reading the downloaded file end to end.
+
+1. **`EjbcaEnrollment.Issued` now carries the certificate PEM.** This reverses that record's explicit "never the PEM body" — deliberately, and recorded here rather than edited away silently. There was never a secret in a certificate: it is public by construction. The line it shared with "never the private key" still holds absolutely, and for a stronger reason than policy — cert-service generates the EC keypair for the CSR and **discards it at issuance**, so there is no key left to leak, expose, or accidentally serve.
+
+2. **A p12 with the key was considered and rejected** (user asked). Not because a throwaway lab key is dangerous in itself, but because of where it would travel: cert-service → agent-pki → agent-client is the tool-result path that feeds an LLM. A private key crossing an AI agent's context is the exact thing this project argues against, and the first PKI-literate viewer would notice. Real PKI has the device generate its own key and the CA never see it; our shortcut is the only reason the question arises. If a usable p12 is ever wanted, it goes direct from cert-service with a per-issuance random passphrase — never a constant like `1234`, which makes the wrapper decorative.
+
+3. **The certificate is taken OUT of what the model sees.** `IssuedCertHolder.captureFrom` stores it and hands the model a one-line placeholder. A kilobyte of base64 in a tool result is context the model pays for, may truncate, and may echo back mangled as if it were prose. The human asked for a certificate, not a description of one.
+
+4. **`/api/issued` returns the same shape as `/api/svid`**, so the console renders it with the existing openssl `x509 -text` component rather than a second one. `/api/issued/download` serves it as `<cn>.pem` with a Content-Disposition filename.
+
+5. **Two failures worth keeping**, both hit live:
+   - **Escapes must be resolved before filtering.** The PEM arrives nested (cert-service's JSON inside agent-pki's JSON), so a line break is the two characters `\` and `n`. Stripping "everything not base64" first removes the backslash and leaves the `n` — which IS a base64 character — so the body corrupts silently and dies much later as `Input byte array has wrong 4-byte ending unit`. Regex over escaped text was the wrong tool; the fix unescapes explicitly, then re-derives the body from scratch and refuses to store anything that will not decode.
+   - **Jackson is NOT on agent-client's classpath** despite `spring-boot-starter-web` (Boot 4 starter layout). The parser-based version failed to compile; the shipped version uses no new dependency.
+
+6. **MCP sessions do not survive a peer restart.** Restarting cert-service left agent-pki holding a dead session, and the SDK re-initialised it on a background worker thread where the per-call bearer ThreadLocal is unset — surfacing as `cert-service call without an exchanged bearer (fail closed)`. The guard behaved correctly; the caching did not. Restarting the caller clears it. `mcpInitialized` being a one-shot boolean is the root cause and is now a known wart: **restart callers after restarting a callee**, or make initialisation recoverable.
+
+7. **The SSE emitter ceiling moved 300s → 900s.** A tool-calling turn is at least two model round-trips and the demo default is a small local model on CPU (~5 tok/s); five minutes ran out mid-turn and the browser saw a dead stream with no explanation. The ceiling exists to bound a hang, not to race the model.
+
+Evidence: `openssl x509 -in john-laptop.pem` printing subject `CN=john-laptop`, issuer `CN=Eviden Root CA`, serial and both dates; `/api/issued` → HTTP 200 with decoded claims and zero `PRIVATE KEY` occurrences; console test asserting the panel, the `openssl`-style child renderer, the download filename, and the absence of anything key-shaped.
+
+Consequences: the demo now ends on an artifact a human can keep and verify, which is the payoff the two-hop chain existed to produce. The "no key" line is now a talking point rather than a gap — *the private key never left the device* is the correct PKI story, and the console says so on the panel.

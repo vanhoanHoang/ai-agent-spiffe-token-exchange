@@ -126,9 +126,14 @@ K update "clients/$PKI_CID/optional-client-scopes/$ISSUE_SCOPE" -r ai-agents
 say "agent-pki may hold issue:employee-cert"
 
 # The human's clients must be able to GRANT both, or there is nothing to delegate.
+# A missing client here is FATAL, never a skip: without these scopes alice reaches
+# a consent screen that cannot grant the task, and the two-hop demo dies silently
+# with every script still reporting success. That exact failure shipped once —
+# demo-web was absent, this loop continued past it, and the breakage only surfaced
+# as "Client not found" at the browser.
 for c in test-caller demo-web; do
   cid=$(client_id "$c")
-  [ -n "$cid" ] || continue
+  [ -n "$cid" ] || { echo "FATAL: client $c missing — run setup-demo-web.sh first" >&2; exit 1; }
   K update "clients/$cid/optional-client-scopes/$INITIATE_SCOPE" -r ai-agents
   K update "clients/$cid/optional-client-scopes/$ISSUE_SCOPE" -r ai-agents
   say "$c may request both task scopes (alice grants them at consent)"

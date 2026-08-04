@@ -52,6 +52,15 @@ export interface LiveSvid {
   readonly chain: readonly LiveCert[];
 }
 
+/**
+ * The employee certificate the delegation chain produced (D-036). Same shape
+ * as a chain certificate, plus the PEM — public material throughout: the key
+ * that would make it usable was discarded at issuance.
+ */
+export interface IssuedCert extends LiveCert {
+  readonly pem: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LiveClient {
   private csrf = '';
@@ -103,6 +112,24 @@ export class LiveClient {
         return null;
       }
       return { spiffeId: d.spiffeId, chain: d.chain as LiveCert[] };
+    } catch {
+      return null;
+    }
+  }
+
+  /** The certificate this session's chain issued, decoded, or null when none
+   *  has been issued yet (the endpoint answers 204 in that case). */
+  async issued(): Promise<IssuedCert | null> {
+    try {
+      const r = await fetch('/api/issued');
+      if (!r.ok || r.status === 204) {
+        return null;
+      }
+      const d = (await r.json()) as { pem?: unknown; subject?: unknown };
+      if (typeof d.pem !== 'string' || typeof d.subject !== 'string') {
+        return null;
+      }
+      return d as unknown as IssuedCert;
     } catch {
       return null;
     }

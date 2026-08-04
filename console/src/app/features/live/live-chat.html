@@ -9,36 +9,32 @@
     </span>
   </div>
 
-  <div class="flow" aria-label="message flow">
-    <button type="button" class="hop human done" title="View step details" (click)="view('login')">01 login ✓</button>
-    <span class="arrow"></span>
-    <button type="button" class="hop workload" [attr.data-s]="hops().svid" title="View step details"
-      (click)="view('svid')">02 fetch JWT-SVID</button>
-    <span class="arrow"></span>
-    <button type="button" class="hop bridge" [attr.data-s]="hops().exchange" title="View step details"
-      (click)="view('exchange')">03 exchange · act.sub</button>
-    <span class="arrow"></span>
-    <button type="button" class="hop ink" [attr.data-s]="hops().call" title="View step details"
-      (click)="view('call')">
-      04 mTLS tool call{{ toolNames().length > 0 ? ' · ' + toolNames().join(', ') : '' }}
-    </button>
-    <span class="arrow"></span>
-    <button type="button" class="hop ink" [attr.data-s]="hops().answer" title="View step details"
-      (click)="view('chat')">05 answer</button>
-  </div>
-
-  @if (feed().length > 0) {
-    <div class="feed" aria-label="server events">
-      @for (line of feed(); track $index) {
-        <div class="feed-line"><span class="feed-step">{{ line.step }}</span> {{ line.detail }}</div>
+  @for (g of trace(); track g.hop) {
+    <section class="hopgroup" [attr.data-hop]="g.hop">
+      <h4 class="hophead">
+        <span class="hopnum">hop {{ g.hop }}</span>
+        <span class="hopactor">{{ g.actor }}</span>
+      </h4>
+      @for (l of g.lines; track $index) {
+        <button type="button" class="tstep" title="Open this step on the diagram" (click)="view(l.stage)">
+          <span class="tlabel">{{ l.label }}</span>
+          <span class="tdetail">{{ l.detail }}</span>
+        </button>
       }
-    </div>
+    </section>
+  }
+
+  @if (delegated()) {
+    <p class="delegnote">
+      Two hops. The assistant handed the privileged half to another workload — it holds
+      no scope that could have finished this alone.
+    </p>
   }
 
   <div class="content">
     <div class="thread" #thread>
       @if (turns().length === 0 && draft() === null) {
-        <div class="empty">Ask the agent something. Try “who am I?” or “read the audit log”.</div>
+        <div class="empty">Ask the agent something. Try “who am I?” or “onboard John, he starts Monday”.</div>
       }
       @for (t of turns(); track $index) {
         <div class="row you">

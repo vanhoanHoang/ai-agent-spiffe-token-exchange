@@ -11,6 +11,14 @@ import {
   viewChild,
 } from '@angular/core';
 
+import {
+  attributeHops,
+  ChainEvent,
+  groupByHop,
+  hopCount,
+  RawChainEvent,
+  stageIdFor,
+} from '../../core/hops';
 import { LiveClient, LiveUser } from '../../core/live';
 
 interface Turn {
@@ -19,16 +27,35 @@ interface Turn {
   readonly error: boolean;
 }
 
-interface FeedLine {
-  readonly step: string;
+/** One event as the trace shows it: what happened, and where to inspect it. */
+interface TraceLine {
+  readonly stage: string;
+  readonly label: string;
   readonly detail: string;
 }
 
-type HopId = 'svid' | 'exchange' | 'call' | 'answer';
-type HopStatus = 'pre' | 'active' | 'done' | 'failed';
+interface TraceGroup {
+  readonly hop: number;
+  readonly actor: string;
+  readonly lines: readonly TraceLine[];
+}
+
 type Phase = 'idle' | 'flight' | 'done' | 'error';
 
-const IDLE_HOPS: Record<HopId, HopStatus> = { svid: 'pre', exchange: 'pre', call: 'pre', answer: 'pre' };
+/** What each event means, in the reader's language rather than the wire's. */
+const STEP_LABEL: Readonly<Record<string, string>> = {
+  svid: 'proved which workload it is',
+  exchange: 'exchanged the token · RFC 8693',
+  tool: 'called a tool over mTLS',
+};
+
+function toLine(e: ChainEvent): TraceLine {
+  return {
+    stage: stageIdFor(e),
+    label: STEP_LABEL[e.step] ?? e.step,
+    detail: e.detail,
+  };
+}
 
 @Component({
   selector: 'dc-live-chat',
@@ -38,22 +65,41 @@ const IDLE_HOPS: Record<HopId, HopStatus> = { svid: 'pre', exchange: 'pre', call
 })
 export class LiveChat {
   readonly user = input.required<LiveUser>();
-  /** Hop chip clicked — asks the page to open the matching stage detail. */
+  /** A trace line was clicked — asks the page to open the matching stage. */
   readonly inspect = output<string>();
+  /** How deep the chain went, so the page can follow it on the diagram. */
+  readonly reached = output<string>();
 
   private readonly live = inject(LiveClient);
 
   protected readonly turns = signal<readonly Turn[]>([]);
   protected readonly draft = signal<string | null>(null);
   protected readonly pending = signal(false);
+  protected readonly phase = signal<Phase>('idle');
+  private readonly raw = signal<readonly RawChainEvent[]>([]);
   private readonly thread = viewChild<ElementRef<HTMLDivElement>>('thread');
+
+  /** The stream, attributed to hops. Derived — see core/hops.ts for why. */
+  private readonly events = computed(() => attributeHops(this.raw()));
+  protected readonly hops = computed(() => hopCount(this.events()));
+  protected readonly trace = computed<readonly TraceGroup[]>(() =>
+    groupByHop(this.events()).map((g) => ({
+      hop: g.hop,
+      actor: g.actor,
+      lines: g.lines.map(toLine),
+    })),
+  );
+
+  /** Two hops means the assistant delegated rather than acted alone. */
+  protected readonly delegated = computed(() => this.hops() >= 2);
+  protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
 
   constructor() {
     // Keep the thread pinned to the newest message as bubbles arrive.
     effect(() => {
       this.turns();
       this.draft();
-      this.feed();
+      this.trace();
       const el = this.thread()?.nativeElement;
       if (el) {
         requestAnimationFrame(() => {
@@ -62,12 +108,6 @@ export class LiveChat {
       }
     });
   }
-  protected readonly phase = signal<Phase>('idle');
-  protected readonly hops = signal<Record<HopId, HopStatus>>(IDLE_HOPS);
-  protected readonly feed = signal<readonly FeedLine[]>([]);
-  protected readonly toolNames = signal<readonly string[]>([]);
-
-  protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
 
   protected view(stageId: string): void {
     this.inspect.emit(stageId);
@@ -82,16 +122,12 @@ export class LiveChat {
     void this.run(message);
   }
 
-  /** Each REAL completion from the server stream advances the hop rail. */
+  /** Each REAL completion from the server stream extends the trace. */
   private onEvent(step: string, detail: string): void {
-    this.feed.update((f) => [...f, { step, detail }]);
-    if (step === 'svid') {
-      this.hops.update((h) => ({ ...h, svid: 'done', exchange: 'active' }));
-    } else if (step === 'exchange') {
-      this.hops.update((h) => ({ ...h, exchange: 'done', call: 'active' }));
-    } else if (step === 'tool') {
-      this.toolNames.update((t) => [...t, detail]);
-      this.hops.update((h) => ({ ...h, call: 'done', answer: 'active' }));
+    this.raw.update((r) => [...r, { step, detail }]);
+    const lit = this.events().at(-1);
+    if (lit !== undefined) {
+      this.reached.emit(stageIdFor(lit));
     }
   }
 
@@ -99,28 +135,13 @@ export class LiveChat {
     this.pending.set(true);
     this.draft.set(message);
     this.phase.set('flight');
-    this.hops.set({ ...IDLE_HOPS, svid: 'active' });
-    this.feed.set([]);
-    this.toolNames.set([]);
+    this.raw.set([]);
 
     const res = await this.live.chatStream(message, (s, d) => this.onEvent(s, d));
     const error = res.answer === undefined;
     this.turns.update((t) => [...t, { q: message, a: res.answer ?? res.error ?? 'no response', error }]);
     this.draft.set(null);
-    this.hops.update((h) => finishHops(h, error));
     this.phase.set(error ? 'error' : 'done');
     this.pending.set(false);
   }
-}
-
-function finishHops(h: Record<HopId, HopStatus>, error: boolean): Record<HopId, HopStatus> {
-  const out = { ...h };
-  for (const id of Object.keys(out) as HopId[]) {
-    if (out[id] === 'active') {
-      out[id] = error ? 'failed' : 'done';
-    } else if (out[id] === 'pre' && !error) {
-      out[id] = 'done';
-    }
-  }
-  return out;
 }

@@ -5,6 +5,9 @@ import { LiveChat } from './live-chat';
 
 type OnEvent = (step: string, detail: string) => void;
 
+const AGENT_SVID = 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-client';
+const PKI_SVID = 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-pki';
+
 describe('LiveChat', () => {
   async function render(
     result: ChatResult,
@@ -43,9 +46,9 @@ describe('LiveChat', () => {
     await fixture.whenStable();
   }
 
-  it('streams real events: hops complete in order, feed shows details, answer lands', async () => {
+  it('traces a single-hop chain as one hop, and lands the answer', async () => {
     const fixture = await render({ answer: 'You are alice; I act as the agent.' }, [
-      ['svid', 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-client'],
+      ['svid', AGENT_SVID],
       ['exchange', 'RFC 8693 exchange done'],
       ['tool', 'whoami'],
     ]);
@@ -53,21 +56,53 @@ describe('LiveChat', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('You are alice');
     expect(el.querySelector('.panel')?.getAttribute('data-phase')).toBe('done');
-    expect(el.querySelector('.hop.workload')?.getAttribute('data-s')).toBe('done');
-    expect(el.querySelector('.hop.bridge')?.getAttribute('data-s')).toBe('done');
-    expect(el.textContent).toContain('04 mTLS tool call · whoami');
-    expect(el.querySelector('.feed')?.textContent).toContain('JWT-SVID minted');
+    expect(el.querySelectorAll('.hopgroup').length).toBe(1);
+    expect(el.querySelector('.hopactor')?.textContent).toContain('agent-client');
+    expect(el.textContent).toContain('whoami');
+    // One hop is not delegation — the note must stay off.
+    expect(el.querySelector('.delegnote')).toBeNull();
   });
 
-  it('marks the in-flight hop failed when the chain refuses', async () => {
-    const fixture = await render({ error: 'exchange failed: HTTP 400' }, [
-      ['svid', 'JWT-SVID minted for spiffe://ai-agent.id.eviden.internal/agent-client'],
+  it('splits a two-hop chain into two groups and names the second workload', async () => {
+    const fixture = await render({ answer: 'Certificate issued for john-laptop.' }, [
+      ['svid', AGENT_SVID],
+      ['exchange', 'act.sub=agent-client aud=agent-pki'],
+      ['tool', 'onboard_employee'],
+      ['svid', PKI_SVID],
+      ['exchange', 'act nests: agent-pki over agent-client'],
+      ['tool', 'issue_employee_cert'],
     ]);
+    await sendMessage(fixture, 'onboard John, he starts Monday');
+    const el = fixture.nativeElement as HTMLElement;
+    const groups = el.querySelectorAll('.hopgroup');
+    expect(groups.length).toBe(2);
+    expect(groups[0].textContent).toContain('agent-client');
+    expect(groups[1].textContent).toContain('agent-pki');
+    expect(groups[1].getAttribute('data-hop')).toBe('2');
+    expect(el.querySelector('.delegnote')).not.toBeNull();
+  });
+
+  it('reports the stage each event reached, so the diagram can follow the chain', async () => {
+    const fixture = await render({ answer: 'done' }, [
+      ['svid', AGENT_SVID],
+      ['exchange', 'hop 1'],
+      ['tool', 'onboard_employee'],
+      ['svid', PKI_SVID],
+      ['exchange', 'hop 2'],
+      ['tool', 'issue_employee_cert'],
+    ]);
+    const seen: string[] = [];
+    fixture.componentInstance.reached.subscribe((s: string) => seen.push(s));
+    await sendMessage(fixture, 'onboard John');
+    expect(seen).toEqual(['svid', 'exchange', 'call', 'svid2', 'exchange2', 'issue']);
+  });
+
+  it('shows the refusal in the thread when the chain is denied', async () => {
+    const fixture = await render({ error: 'exchange failed: HTTP 400' }, [['svid', AGENT_SVID]]);
     await sendMessage(fixture, 'break');
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.bubble.err')?.textContent).toContain('exchange failed');
     expect(el.querySelector('.panel')?.getAttribute('data-phase')).toBe('error');
-    expect(el.querySelector('.hop.bridge')?.getAttribute('data-s')).toBe('failed');
   });
 
   it('warns when the consented scopes lack mcp:audit', async () => {

@@ -10,7 +10,7 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { DemoRun, DemoStep, parseDemoRun } from '../../core/demo-run';
-import { LiveClient, LiveSvid } from '../../core/live';
+import { IssuedCert, LiveClient, LiveSvid } from '../../core/live';
 import {
   callChecks,
   custodyHops,
@@ -22,6 +22,7 @@ import {
 import { SessionService } from '../../core/session';
 import { CallChecksPanel } from '../../features/call/call-checks-panel';
 import { CertPanel } from '../../features/certs/cert-panel';
+import { IssuedCertPanel } from '../../features/certs/issued-cert';
 import { ChatPanel } from '../../features/chat/chat-panel';
 import { CustodyPanel } from '../../features/custody/custody-panel';
 import { FlowDiagram } from '../../features/diagram/flow-diagram';
@@ -32,6 +33,9 @@ import { RejectionGrid } from '../../features/rejections/rejection-grid';
 import { StepRail } from '../../features/steps/step-rail';
 import { TokenCard } from '../../shared/ui/token-card';
 
+/** Stages that only exist once the chain delegated a second time. */
+const SECOND_HOP_STAGES: readonly string[] = ['svid2', 'exchange2', 'issue'];
+
 @Component({
   selector: 'dc-console-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +45,7 @@ import { TokenCard } from '../../shared/ui/token-card';
     StepRail,
     TokenCard,
     CertPanel,
+    IssuedCertPanel,
     CustodyPanel,
     CallChecksPanel,
     ChatPanel,
@@ -62,6 +67,11 @@ export class ConsolePage {
   protected readonly tab = signal<'rejections' | 'log'>('rejections');
   protected readonly liveSvid = signal<LiveSvid | null>(null);
   protected readonly liveUser = this.session.user;
+  /** How deep the live chain went, so the diagram widens to the second hop
+   *  only when the run actually delegated (M12/D-032). */
+  protected readonly liveHops = signal(1);
+  /** The certificate this session's chain issued, once one exists (D-036). */
+  protected readonly issuedCert = signal<IssuedCert | null>(null);
 
   /** P6.8: live session vs the captured history. Nothing recorded renders in
    *  the live view — captured artifacts live behind the explicit tab, under a
@@ -133,6 +143,28 @@ export class ConsolePage {
   protected inspect(id: string): void {
     this.select(id);
     this.stagePanel()?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
+  /**
+   * A real event landed in the live chain: follow it on the diagram. Hop 1's
+   * `svid` opens a fresh chain, so it resets the depth — otherwise a two-hop
+   * run would leave the next single-hop run drawing scenery it never used.
+   */
+  protected follow(stageId: string): void {
+    this.stageId.set(stageId);
+    if (stageId === 'svid') {
+      this.liveHops.set(1);
+    } else if (SECOND_HOP_STAGES.includes(stageId)) {
+      this.liveHops.set(2);
+    }
+    if (stageId === 'issue') {
+      void this.loadIssued();
+    }
+  }
+
+  /** The chain reached issuance: fetch the certificate it produced. */
+  private async loadIssued(): Promise<void> {
+    this.issuedCert.set(await this.liveClient.issued());
   }
 
   /** The mockup's play behavior: walk the five stages, packets and all. */
