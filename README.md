@@ -45,6 +45,11 @@ with its own root CA, which is intended.
 
 Check: `docker compose version` and `bash --version` both answer.
 
+Host ports **8080, 8083, 8090, 8443, 8444** must be free. Another stack
+holding one of them fails the launch with
+`Bind for 0.0.0.0:<port> failed: port is already allocated` — find the holder
+with `docker ps --format '{{.Names}}\t{{.Ports}}'` and stop it first.
+
 ### 2. Get the code
 
 ```bash
@@ -64,10 +69,17 @@ bash infra/spire/gen-bootstrap.sh        # node-attestation bootstrap CA
 bash infra/pki/setup-ejbca.sh            # EJBCA hierarchy + name-constrained intermediate (minutes)
 bash infra/pki/setup-employee-profile.sh # M12: employee profiles + cert-service's RA credential
 
-# everything else: image builds (incl. console), services, SPIRE registrations,
-# Keycloak realm (incl. two-hop delegation), demo + pki profiles, model pull
-bash demo/reset.sh --full
+# everything else: preflight (free ports, artifacts present), image builds
+# (incl. console), services, SPIRE registrations, Keycloak realm (incl.
+# two-hop delegation), demo + pki profiles, model pull, full verification
+bash demo/up.sh
 ```
+
+`demo/up.sh` is the one launch command from here on — fresh machine, after a
+reboot, after a `down`, always the same. Its preflight fails fast with the
+exact fix line when a port is held by another stack or a one-time artifact is
+missing (`demo/up.sh --check` runs just the preflight). It ends with the full
+checklist, so its last line is the verdict.
 
 First run is the slowest: all image builds plus the ~2–3 GB Ollama model
 download. Subsequent `reset.sh --full` runs take ~3 minutes.
@@ -110,6 +122,8 @@ EJBCA admin at https://localhost:8444/ejbca/adminweb/ (client-cert gated).
 
 | Task | Command |
 |---|---|
+| Launch or relaunch everything (preflight + reset + verify) | `bash demo/up.sh` (~5 min) |
+| Preflight only — is this machine ready to launch? | `bash demo/up.sh --check` (seconds) |
 | Stage recovery (app layer restart + idempotent re-setup) | `bash demo/reset.sh --soft` (~90 s) |
 | Deterministic full restart, volumes kept | `bash demo/reset.sh --full` (~3 min) |
 | Destroy SPIRE/EJBCA state and rebuild from nothing | `bash demo/reset.sh --cold` (asks first; re-runs the PKI setup) |
@@ -120,13 +134,24 @@ EJBCA admin at https://localhost:8444/ejbca/adminweb/ (client-cert gated).
 Note: raw `docker compose up` starts nothing PKI-related unless you pass
 `--profile pki` — EJBCA lives behind that profile; `reset.sh` handles it.
 
+Raw `docker compose up` is also not enough after "Stop everything": Keycloak
+runs `start-dev` with **no data volume**, so `down` deletes the realm with the
+container. The setup scripts are idempotent and `reset.sh` re-runs them —
+always come back up via `reset.sh --soft` (or `--full`), never bare
+`compose up`.
+
 ### If something fails
 
 1. **Any JWT/token failure:** check container clock skew before touching code —
    `demo/checklist.sh` does this first for a reason.
 2. **Cross-container TLS failure:** two hypotheses maximum, then
    `openssl s_client -showcerts` and read the actual chain (CLAUDE.md §8).
-3. **Issuance fails with "RA credential missing":** run
+3. **`agent-web` unhealthy or restart-looping with `"Realm does not exist"`:**
+   the stack was brought up with bare `compose up` after a `down`, so the
+   `ai-agents` realm is gone (see the no-data-volume note above). Run
+   `bash demo/reset.sh --soft` — it recreates the realm and restarts the app
+   layer in the right order.
+4. **Issuance fails with "RA credential missing":** run
    `bash infra/pki/setup-employee-profile.sh` (it is idempotent).
-4. After restarting `cert-service` manually, restart `agent-pki` too — its MCP
+5. After restarting `cert-service` manually, restart `agent-pki` too — its MCP
    session to cert-service dies with the container (D-032).
