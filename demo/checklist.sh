@@ -20,7 +20,7 @@ elif [ "$SKEW" -le 30 ]; then ok "clock skew host<->keycloak (${SKEW}s)"
 else bad "clock skew host<->keycloak" "${SKEW}s — fix this before touching anything else"; fi
 
 # 2. Services healthy (core + demo profile; ollama only when it is the provider).
-svcs="spire-server spire-agent keycloak mcp-server agent-web"
+svcs="spire-server spire-agent keycloak mcp-server agent-web agent-pki cert-service"   # ejbca: no healthcheck in the image; step 4b probes it
 [ "$LLM_PROVIDER" = ollama ] && svcs="$svcs ollama"
 for svc in $svcs; do
   state=$(docker inspect -f '{{.State.Health.Status}}' "spiffe-mcp-lab-${svc}-1" 2>/dev/null || echo missing)
@@ -47,6 +47,27 @@ curl -sk -o /dev/null --max-time 5 https://localhost:8443 2>/dev/null; [ $? -ne 
   && ok "mcp-server :8443 (TLS answering)" || bad "mcp-server :8443"
 curl -s -o /dev/null --max-time 5 http://localhost:8090/ \
   && ok "agent-web :8090" || bad "agent-web :8090"
+
+# 4b. Hop 2's PKI leg, exercised the way cert-service does it: the RA keystore
+#     must be ACCEPTED by the EJBCA running now. pki/ra/ copied from another
+#     machine, or an ejbca-data volume recreated after setup-employee-profile.sh,
+#     passes every "file exists" check and then dies on stage with
+#     "HTTP/1.1 header parser received no bytes" (EJBCA closes the TLS
+#     connection on a client cert its ManagementCA never issued).
+RA_P12=infra/pki/ra/ra-cert-service.p12; RA_CA=infra/pki/ra/ejbca-tls-ca.pem
+RA_PW="${EJBCA_RA_KEYSTORE_PASSWORD:-${EJBCA_RA_PASSWORD:-enroll-lab}}"
+if [ ! -f "$RA_P12" ] || [ ! -f "$RA_CA" ]; then
+  bad "EJBCA accepts the RA keystore" "pki/ra/ missing — bash infra/pki/setup-employee-profile.sh"
+else
+  code=$(MSYS_NO_PATHCONV=1 curl -s -o /dev/null --max-time 15 --cert-type P12 --cert "$RA_P12:$RA_PW" \
+           --cacert "$RA_CA" --resolve ejbca:8444:127.0.0.1 -w '%{http_code}' \
+           https://ejbca:8444/ejbca/ejbca-rest-api/v1/certificate/status 2>/dev/null || true)
+  case "$code" in
+    200) ok "EJBCA accepts the RA keystore (hop 2 can issue)" ;;
+    ""|000) bad "EJBCA accepts the RA keystore" "connection closed/refused: keystore not issued by THIS EJBCA (pki/ra copied? volume recreated?) or EJBCA down — bash infra/pki/setup-employee-profile.sh; docker compose -f infra/docker-compose.yml restart cert-service agent-pki" ;;
+    *) bad "EJBCA accepts the RA keystore" "HTTP $code from the REST status endpoint" ;;
+  esac
+fi
 
 # 5. Browser demo prerequisite: 'keycloak' must resolve on the HOST for the
 #    login redirect (issuer is http://keycloak:8080, D-005). Warning only —

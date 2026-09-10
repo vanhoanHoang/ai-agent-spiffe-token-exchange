@@ -1,6 +1,7 @@
 package internal.lab.certsvc;
 
 import java.io.StringWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -162,7 +163,19 @@ public class EjbcaEnrollment {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> response = raClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = raClient().send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            // Rethrown, not permitted. "HTTP/1.1 header parser received no bytes" /
+            // "EOF reached while reading" = EJBCA closed the connection right after
+            // the TLS handshake, which is how a client certificate its ManagementCA
+            // never issued is refused (TLS 1.3 alerts arrive post-handshake).
+            throw new IllegalStateException("EJBCA closed the connection without a response (" + e.getMessage()
+                    + "): the RA keystore " + raKeystorePath + " is not accepted by the running EJBCA"
+                    + " (pki/ra/ copied from another machine, or ejbca-data volume recreated after"
+                    + " setup-employee-profile.sh), or EJBCA is not up. Run demo/checklist.sh.", e);
+        }
         if (response.statusCode() != 200 && response.statusCode() != 201) {
             throw new IllegalStateException(
                     "EJBCA enrollment failed: HTTP " + response.statusCode() + " " + response.body());

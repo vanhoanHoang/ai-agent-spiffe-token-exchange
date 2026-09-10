@@ -24,10 +24,7 @@ EXSH(){ (cd .. && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose exec
 CP()  { (cd .. && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose cp "ejbca:$1" "pki/$2"); }
 say() { echo "== $*"; }
 
-if [ "$FORCE" != "--force" ] && [ -f ejbca-root.pem ] && [ -f spire-intermediate.pem ] \
-   && [ -f spire-intermediate-key.pem ] && [ -f chain.pem ]; then
-  say "contract files already present — nothing to do (use --force to re-export)"; exit 0
-fi
+have_files() { [ -f ejbca-root.pem ] && [ -f spire-intermediate.pem ] && [ -f spire-intermediate-key.pem ] && [ -f chain.pem ]; }
 
 say "starting ejbca (compose profile pki)"
 (cd .. && docker compose --profile pki up -d ejbca >/dev/null)
@@ -35,6 +32,30 @@ for i in $(seq 1 60); do EX ca listcas >/dev/null 2>&1 && break; sleep 5; done
 EX ca listcas >/dev/null || { echo "EJBCA CLI not responding"; exit 1; }
 
 ca_exists() { EX ca listcas 2>/dev/null | grep -q "CA Name: $1"; }
+
+# Existence is not consistency: the contract files and the ejbca-data volume
+# are one unit (files copied from another machine, or a volume recreated after
+# this script ran). SPIRE and Keycloak trust ejbca-root.pem, so a mismatch is
+# not patched here — it is reported with the runbook's resolution.
+if [ "$FORCE" != "--force" ] && have_files; then
+  if ca_exists EvidenRoot; then
+    EX ca getcacert --caname EvidenRoot -f /tmp/evidenroot-live.pem >/dev/null
+    mkdir -p ../.stage && CP /tmp/evidenroot-live.pem ../.stage/evidenroot-live.pem
+    live=$(openssl x509 -in ../.stage/evidenroot-live.pem -noout -fingerprint -sha256); rm -f ../.stage/evidenroot-live.pem
+    mine=$(openssl x509 -in ejbca-root.pem -noout -fingerprint -sha256)
+    if [ "$live" = "$mine" ]; then
+      say "contract files present and match the running EJBCA's EvidenRoot — nothing to do (use --force to re-export)"; exit 0
+    fi
+    echo "FATAL: infra/pki/ejbca-root.pem is not the EvidenRoot of the running EJBCA."
+  else
+    echo "FATAL: infra/pki contract files exist but the running EJBCA has no EvidenRoot."
+  fi
+  echo "The files and the ejbca-data volume come from different machines or runs. Resolution (docs/RUNBOOK-WIN11.md):"
+  echo "  rm infra/pki/*.pem infra/pki/*.srl; rm -r infra/pki/ra infra/spire/bootstrap"
+  echo "  docker volume rm spiffe-mcp-lab_ejbca-data"
+  echo "  then re-run the three one-time scripts (demo\\setup-once.cmd)."
+  exit 1
+fi
 
 # -- 1. Root CA ------------------------------------------------------------
 if ca_exists EvidenRoot; then say "EvidenRoot exists"; else

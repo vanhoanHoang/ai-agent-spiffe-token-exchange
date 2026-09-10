@@ -29,14 +29,31 @@ EXSH(){ (cd .. && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose exec
 CP()  { (cd .. && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker compose cp "ejbca:$1" "pki/$2"); }
 say() { echo "== $*"; }
 
-if [ "$FORCE" != "--force" ] && [ -f ra/ra-cert-service.p12 ] && [ -f ra/ejbca-tls-ca.pem ]; then
-  say "RA credential already present — nothing to do (use --force to re-create)"; exit 0
-fi
-
 say "starting ejbca (compose profile pki)"
 (cd .. && docker compose --profile pki up -d ejbca >/dev/null)
 for i in $(seq 1 60); do EX ca listcas >/dev/null 2>&1 && break; sleep 5; done
 EX ca listcas >/dev/null || { echo "EJBCA CLI not responding"; exit 1; }
+
+# Existence is not consistency. The RA keystore and the ejbca-data volume are
+# one unit: pki/ra/ copied from another machine, or a volume recreated after
+# this script ran, passes every "file exists" check and then kills hop 2 on
+# stage ("HTTP/1.1 header parser received no bytes" — EJBCA closes the TLS
+# connection on a client certificate its ManagementCA never issued). So the
+# early exit requires the files to match the EJBCA that is running NOW.
+if [ "$FORCE" != "--force" ] && [ -f ra/ra-cert-service.p12 ] && [ -f ra/ejbca-tls-ca.pem ]; then
+  EX ca getcacert --caname ManagementCA -f /tmp/mgmtca-live.pem >/dev/null
+  mkdir -p ../.stage && CP /tmp/mgmtca-live.pem ../.stage/mgmtca-live.pem
+  live=$(openssl x509 -in ../.stage/mgmtca-live.pem -noout -fingerprint -sha256); rm -f ../.stage/mgmtca-live.pem
+  mine=$(openssl x509 -in ra/ejbca-tls-ca.pem -noout -fingerprint -sha256)
+  if [ "$live" != "$mine" ]; then
+    say "RA credential present but pki/ra/ejbca-tls-ca.pem is NOT the ManagementCA of the running EJBCA — re-creating"
+  elif ! openssl pkcs12 -in ra/ra-cert-service.p12 -passin "pass:$RAPW" -nokeys 2>/dev/null \
+         | openssl verify -CAfile ra/ejbca-tls-ca.pem >/dev/null 2>&1; then
+    say "RA credential present but ra-cert-service.p12 was not issued by the running ManagementCA (or expired) — re-creating"
+  else
+    say "RA credential present and accepted by the running EJBCA — nothing to do (use --force to re-create)"; exit 0
+  fi
+fi
 
 # -- 0. TLS server identity must be the stable name --------------------------
 # Wait for the TLS port too (the appserver opens it after the CLI DB is usable).
@@ -143,7 +160,10 @@ fi
 
 # -- 4. RA identity for cert-service ----------------------------------------
 if EX ra setclearpwd --username ra-cert-service --password "$RAPW" >/dev/null 2>&1; then
-  say "end entity ra-cert-service exists"
+  say "end entity ra-cert-service exists — resetting status to NEW so batch issues a fresh keystore"
+  # Status stays GENERATED (40) after the first batch, and `batch` then generates
+  # nothing (verified live: findendentity → Status: 40). NEW=10 per `setendentitystatus --help`.
+  EX ra setendentitystatus --username ra-cert-service -S 10 >/dev/null
 else
   say "creating RA end entity ra-cert-service (ManagementCA)"
   EX ra addendentity --username ra-cert-service --dn "CN=ra-cert-service,O=eviden" \
@@ -190,5 +210,6 @@ openssl x509 -in ra/ejbca-tls-ca.pem -noout -subject | grep -q ManagementCA \
 openssl pkcs12 -in ra/ra-cert-service.p12 -passin "pass:$RAPW" -nokeys 2>/dev/null \
   | openssl x509 -noout -subject | grep -q "ra-cert-service" \
   || { echo "FATAL: RA keystore does not open with the expected password / subject"; exit 1; }
-say "done. cert-service can now enroll (restart not needed — files are read lazily):"
+say "done. cert-service can now enroll. If it already attempted an issuance, restart it and agent-pki (the RA client and the MCP session are cached):"
+say "  docker compose -f infra/docker-compose.yml restart cert-service agent-pki"
 say "  pki/ra/ra-cert-service.p12 + pki/ra/ejbca-tls-ca.pem"
