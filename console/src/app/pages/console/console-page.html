@@ -10,127 +10,115 @@
 } @else if (run(); as r) {
   <dc-run-header [run]="r" />
 
-  <main>
-    <div class="view-switch" role="tablist">
-      <button type="button" class="vtab" role="tab" [attr.aria-selected]="view() === 'live'"
-        [class.on]="view() === 'live'" (click)="setView('live')">Live session</button>
-      <button type="button" class="vtab" role="tab" [attr.aria-selected]="view() === 'recorded'"
-        [class.on]="view() === 'recorded'" (click)="setView('recorded')">
-        Recorded run · {{ r.captured_at.slice(0, 10) }}
-      </button>
-    </div>
-
-    @if (view() !== 'live') {
-      <div class="provenance">
-        <span class="prov-tag">Recorded evidence</span>
-        Captured {{ r.captured_at }} by a scripted test client and verified by the
-        stack at capture time. This is not your session. Every verdict shown here
-        was actually enforced.
-      </div>
+  <main [class.cockpit]="view() === 'live'">
+    @if (view() === 'live') {
+      <aside class="rail">
+        @if (liveUser(); as u) {
+          <dc-live-chat [user]="u" (inspect)="inspect($event)" (reached)="follow($event)" />
+        } @else {
+          <div class="guest-note">
+            <p>
+              The live session needs a signed-in user.
+              <a routerLink="/login">Sign in</a> to chat with the agent.
+            </p>
+          </div>
+        }
+      </aside>
     }
 
-    <section>
-      <div class="section-head">
-        <h2>Architecture</h2>
-        <span class="rule"></span>
+    <div class="stagecol">
+      <div class="stage-top">
+        <div class="view-switch" role="tablist">
+          <button type="button" class="vtab" role="tab" [attr.aria-selected]="view() === 'live'"
+            [class.on]="view() === 'live'" (click)="setView('live')">Live session</button>
+          <button type="button" class="vtab" role="tab" [attr.aria-selected]="view() === 'recorded'"
+            [class.on]="view() === 'recorded'" (click)="setView('recorded')">
+            Recorded run · {{ r.captured_at.slice(0, 10) }}
+          </button>
+        </div>
+        <span class="spacer"></span>
         <button type="button" class="play" (click)="togglePlay()">
-          {{ playing() ? '■ stop' : '▶ play the flow' }}
+          {{ playing() ? '■ Stop' : '▶ Play' }}
         </button>
       </div>
-      <dc-flow-diagram [stage]="stageId()" [hops]="liveHops()" />
-    </section>
 
-    @if (view() === 'live') {
-      @if (liveUser(); as u) {
+      @if (view() !== 'live') {
+        <div class="provenance">
+          <span class="prov-tag">Recorded evidence</span>
+          Captured {{ r.captured_at }} — not your session; every verdict shown was
+          enforced by the stack at capture time.
+        </div>
+      }
+
+      <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
+      <dc-flow-diagram [stage]="stageId()" [hops]="liveHops()" />
+
+      <section class="stage" #stagePanel [attr.data-role]="stage().role">
+        <div class="stage-head">
+          <span class="stage-tag">{{ stage().kindLabel }}</span>
+          <h3>{{ stage().title }}</h3>
+        </div>
+        <p class="narration">{{ stage().narration }}</p>
+        <p class="proves"><em>Proves:</em> {{ stage().proves }}</p>
+
+        <div class="artifacts">
+          @if (view() === 'recorded') {
+            @switch (stage().id) {
+              @case ('login') {
+                @if (subjectToken(); as t) {
+                  <dc-token-card [token]="t" role="human" kicker="Access token · human only" title="Alice's login token" />
+                }
+              }
+              @case ('svid') {
+                <dc-custody-panel [hops]="hops()" [custody]="r.chain_of_custody" />
+              }
+              @case ('exchange') {
+                @if (exchangedToken(); as t) {
+                  <dc-token-card [token]="t" role="bridge" kicker="Exchanged token · both identities" title="Delegation token" />
+                }
+              }
+              @case ('call') {
+                <dc-call-checks-panel [checks]="checks()" [logLines]="callLog()" />
+              }
+              @case ('chat') {
+                <dc-chat-panel [steps]="chatSteps()" />
+              }
+            }
+          } @else if (stage().id === 'svid' && liveSvid(); as s) {
+            <dc-cert-panel [svid]="s" (reload)="loadSvid()" />
+          } @else {
+            <p class="awaiting">
+              This step runs in your session when you chat. Open the Recorded run
+              tab to inspect a captured example of its artifact.
+            </p>
+          }
+        </div>
+      </section>
+
+      @if (view() === 'live' && issuedCert(); as c) {
+        <dc-issued-cert [cert]="c" />
+      }
+
+      @if (view() === 'recorded') {
         <section>
-          <div class="section-head">
-            <h2>Live agent</h2>
+          <div class="section-head tabs" role="tablist">
+            <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'rejections'"
+              [class.on]="tab() === 'rejections'" (click)="tab.set('rejections')">Rejections</button>
+            <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'log'"
+              [class.on]="tab() === 'log'" (click)="tab.set('log')">MCP server log</button>
             <span class="rule"></span>
           </div>
-          <dc-live-chat [user]="u" (inspect)="inspect($event)" (reached)="follow($event)" />
-          @if (issuedCert(); as c) {
-            <dc-issued-cert [cert]="c" />
+          @switch (tab()) {
+            @case ('rejections') {
+              <dc-rejection-grid [cards]="rejections()" />
+            }
+            @case ('log') {
+              <dc-log-panel [lines]="r.log_tail" />
+            }
           }
-        </section>
-      } @else {
-        <section class="guest-note">
-          <p>
-            The live session needs a signed-in user.
-            <a routerLink="/login">Sign in</a> to chat with the agent.
-          </p>
         </section>
       }
-    }
-
-    <section>
-      <div class="section-head">
-        <h2>Request flow</h2>
-        <span class="rule"></span>
-      </div>
-      <dc-step-rail [stages]="stages" [selected]="stageId()" (picked)="select($event)" />
-    </section>
-
-    <section class="stage" #stagePanel [attr.data-role]="stage().role">
-      <div class="stage-head">
-        <span class="stage-tag">{{ stage().kindLabel }}</span>
-        <h3>{{ stage().title }}</h3>
-      </div>
-      <p class="narration">{{ stage().narration }}</p>
-      <p class="proves"><em>Proves:</em> {{ stage().proves }}</p>
-
-      <div class="artifacts">
-        @if (view() === 'recorded') {
-          @switch (stage().id) {
-            @case ('login') {
-              @if (subjectToken(); as t) {
-                <dc-token-card [token]="t" role="human" kicker="Access token · human only" title="Alice's login token" />
-              }
-            }
-            @case ('svid') {
-              <dc-custody-panel [hops]="hops()" [custody]="r.chain_of_custody" />
-            }
-            @case ('exchange') {
-              @if (exchangedToken(); as t) {
-                <dc-token-card [token]="t" role="bridge" kicker="Exchanged token · both identities" title="Delegation token" />
-              }
-            }
-            @case ('call') {
-              <dc-call-checks-panel [checks]="checks()" [logLines]="callLog()" />
-            }
-            @case ('chat') {
-              <dc-chat-panel [steps]="chatSteps()" />
-            }
-          }
-        } @else if (stage().id === 'svid' && liveSvid(); as s) {
-          <dc-cert-panel [svid]="s" (reload)="loadSvid()" />
-        } @else {
-          <p class="awaiting">
-            This step runs in your session when you chat. Open the Recorded run
-            tab to inspect a captured example of its artifact.
-          </p>
-        }
-      </div>
-    </section>
-
-    @if (view() === 'recorded') {
-      <section>
-        <div class="section-head tabs" role="tablist">
-          <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'rejections'"
-            [class.on]="tab() === 'rejections'" (click)="tab.set('rejections')">Rejections</button>
-          <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'log'"
-            [class.on]="tab() === 'log'" (click)="tab.set('log')">MCP server log</button>
-          <span class="rule"></span>
-        </div>
-        @switch (tab()) {
-          @case ('rejections') {
-            <dc-rejection-grid [cards]="rejections()" />
-          }
-          @case ('log') {
-            <dc-log-panel [lines]="r.log_tail" />
-          }
-        }
-      </section>
-    }
+    </div>
   </main>
 } @else {
   <p class="loading">Loading capture…</p>

@@ -2,24 +2,55 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  background: var(--surface-ink);
-  color: var(--text-on-ink);
-  padding: 10px var(--space-8);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-panel);
+  padding: var(--space-3) var(--space-6);
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 19px;
-  letter-spacing: 0.02em;
+  font-size: 14px;
+  letter-spacing: 0.01em;
   color: inherit;
   text-decoration: none;
 }
 
+.mark {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.mark-ground {
+  fill: var(--surface-ink);
+}
+
+.mark-link,
+.mark-bridge {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.mark-link {
+  stroke: var(--text-on-ink);
+}
+
+.mark-bridge {
+  stroke: var(--id-bridge);
+}
+
 .env {
   font-family: var(--font-mono);
-  font-size: 12px;
-  opacity: 0.75;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border-panel);
+  padding-left: var(--space-4);
 }
 
 .spacer {
@@ -29,24 +60,23 @@
 .who {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .scopes {
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  opacity: 0.75;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .logout {
   font: inherit;
   font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-weight: 500;
   cursor: pointer;
-  color: inherit;
+  color: var(--text-primary);
   background: none;
-  border: 1px solid;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 4px 12px;
 }

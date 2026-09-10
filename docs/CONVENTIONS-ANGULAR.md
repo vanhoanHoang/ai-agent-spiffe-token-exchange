@@ -35,12 +35,12 @@ The console has exactly **one input**: the captured `DEMO_RUN` JSON (schema owne
 
 ## Design system
 
-- The mockup (`mockup/identity-demo-console.html`) is the **visual starting point, not the implementation**: re-read it when console work starts, extract its palette/spacing/typography into tokens, then rebuild properly. It is static HTML and lacks real features — nothing in it is copied wholesale.
+- The visual source of truth is the **v2 "Plex" system** (D-037), drafted on the redesign canvas ("Identity Console Redesign"); the original mockup (`mockup/identity-demo-console.html`) is historical reference only.
 - Design tokens are CSS custom properties in `src/styles/tokens.css`, two layers:
   - **primitive** (`--color-teal-500`, `--space-4`, `--font-mono`) — raw values, defined once;
   - **semantic** (`--surface-panel`, `--text-verdict-pass`, `--text-verdict-fail`, `--border-custody`) — what components actually use.
 - Components consume **semantic tokens only**. A hex color, px spacing, or font name inside a component style is a review-blocking defect. New visual values enter through the token files or not at all.
-- The mockup's system is **"Classical"**: light paper surfaces (`#fbfaf9`/`#ffffff`, border `#ddd8d2`), serif headings (Cormorant Garamond 600) over Lora body, a dark-navy ink band (`#0f3552`) for header/log, and a fixed **colour language** — human/OIDC `#17557f`, workload/SPIFFE `#12706a`, the bridge/`act` `#e0552b`, rejection `#b23a2c`, verdict-green `#2f6b45`. That colour language is semantic (it encodes which identity a value belongs to) — never repurpose those hues decoratively. A theme change is a token swap, not component edits.
+- The system is **v2 "Plex"** (D-037): IBM Plex Sans/Mono over near-monochrome neutrals (`#f5f6f8`/`#ffffff`, hairline `#e4e7ec`, ink `#1a1d23`), a 3-level type ramp (mono strictly for identifiers/claims/log — never a sentence), 4-base spacing, radii 6/10, and a fixed **colour language** — human/OIDC `#35618e`, workload/SPIFFE `#1f7a70`, the bridge/`act` `#c2551f` (RFC 8693 hops ONLY), rejection `#b3362a`, verdict-green `#2e7d4f`. That colour language is semantic (it encodes which identity a value belongs to) — never repurpose those hues decoratively; red means denied, buttons and focus rings are ink. A theme change is a token swap, not component edits.
 
 ## Code rules (lint-enforced, not vibes)
 

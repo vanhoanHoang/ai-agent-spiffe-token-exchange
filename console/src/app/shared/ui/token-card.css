@@ -28,14 +28,14 @@
 
 .kicker {
   font-size: 10.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .toggle {
   font: inherit;
   font-size: 10.5px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   color: inherit;
@@ -60,8 +60,8 @@
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 20px;
-  line-height: 1.15;
+  font-size: 14px;
+  line-height: 1.25;
 }
 
 .alg {

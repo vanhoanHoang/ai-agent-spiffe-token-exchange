@@ -35,22 +35,11 @@ form_action() {
   printf '%s' "$a"
 }
 
-echo "== alice signs in and consents to both task scopes =="
-curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "$WEB/oauth2/authorization/keycloak" > "$WORK/login.html"
-ACTION=$(form_action "$WORK/login.html")
-[ -n "$ACTION" ] || fail "no login form at the authorization endpoint"
-curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" \
-  -d username=alice -d password=alice-password "$ACTION" > "$WORK/after-login.html"
-
-if grep -q 'name="code"' "$WORK/after-login.html" && grep -qi consent "$WORK/after-login.html"; then
-  # The consent screen must OFFER both task scopes — if it does not, alice has
-  # nothing to delegate and the whole use case is unreachable from the browser.
-  grep -q 'onboard:initiate\|Onboard' "$WORK/after-login.html" \
-    || fail "consent screen does not offer onboard:initiate — alice cannot delegate"
-  CACTION=$(form_action "$WORK/after-login.html")
-  CARGS=()
-  while IFS='|' read -r n v; do v=${v%$'\r'}; CARGS+=(--data-urlencode "$n=$v"); done < <(
-    python - "$WORK/after-login.html" <<'EOF'
+accept_form() { # $1 = html file holding a Keycloak form with hidden inputs
+  local caction cargs=()
+  caction=$(form_action "$1")
+  while IFS='|' read -r n v; do v=${v%$'\r'}; cargs+=(--data-urlencode "$n=$v"); done < <(
+    python - "$1" <<'EOF'
 import re, sys
 html = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 for m in re.finditer(r'<input[^>]*type="hidden"[^>]*>', html):
@@ -59,7 +48,28 @@ for m in re.finditer(r'<input[^>]*type="hidden"[^>]*>', html):
     if n: print(f"{n.group(1)}|{v.group(1) if v else ''}")
 EOF
   )
-  curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "${CARGS[@]}" -d accept=Yes "$CACTION" >/dev/null
+  curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "${cargs[@]}" -d accept=Yes "$caction" >/dev/null
+}
+
+# M15 (consent-on-demand): login grants identity only; the task scopes arrive
+# through the step-up leg. This check drives both, then proves the chain —
+# what it asserts about the chain itself is unchanged.
+echo "== alice signs in (identity), then steps up to both task scopes =="
+curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "$WEB/oauth2/authorization/keycloak" > "$WORK/login.html"
+ACTION=$(form_action "$WORK/login.html")
+[ -n "$ACTION" ] || fail "no login form at the authorization endpoint"
+curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" \
+  -d username=alice -d password=alice-password "$ACTION" > "$WORK/after-login.html"
+if grep -q 'name="code"' "$WORK/after-login.html" && grep -qi consent "$WORK/after-login.html"; then
+  accept_form "$WORK/after-login.html"
+fi
+curl -s -b "$JAR" -c "$JAR" -L "${RESOLVE[@]}" "$WEB/oauth2/authorization/keycloak-elevate" > "$WORK/elevate.html"
+if grep -qi consent "$WORK/elevate.html"; then
+  # The step-up consent must OFFER both task scopes — if it does not, alice
+  # has nothing to delegate and the whole use case is unreachable.
+  grep -q 'onboard:initiate\|Onboard' "$WORK/elevate.html" \
+    || fail "step-up consent does not offer onboard:initiate — alice cannot delegate"
+  accept_form "$WORK/elevate.html"
 fi
 
 ME=$(curl -s -b "$JAR" "$WEB/api/me")

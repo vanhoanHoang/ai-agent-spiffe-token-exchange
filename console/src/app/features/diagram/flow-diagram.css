@@ -1,50 +1,79 @@
+/* Swimlane sequence (v2/D-037): actors across the top, time flows down,
+   messages are horizontal so nothing crosses. Colour encodes identity —
+   bridge orange appears only on the two RFC 8693 hops. */
 :host {
   display: block;
   background: var(--surface-panel);
   border: 1px solid var(--border-panel);
   border-radius: var(--radius-md);
-  padding: 8px 12px 4px;
+  padding: var(--space-2) var(--space-3);
 }
 
 svg {
+  display: block;
   width: 100%;
   height: auto;
-  display: block;
+}
+
+text {
   font-family: var(--font-body);
 }
 
+.fill-human {
+  fill: var(--id-human);
+}
+
+.fill-workload {
+  fill: var(--id-workload);
+}
+
+.fill-bridge {
+  fill: var(--id-bridge);
+}
+
+.lifeline {
+  stroke: var(--border-panel);
+  stroke-width: 1;
+}
+
+/* Quiet by default so the lit stage carries the story; never invisible,
+   because the topology is a constant. */
 .edge {
   fill: none;
-  stroke: var(--border-panel);
-  stroke-width: 2;
-  transition: stroke 200ms ease, opacity 200ms ease;
-  opacity: 0.55;
+  stroke-width: 1.5;
+  opacity: 0.28;
+  transition: opacity 260ms ease;
 }
 
 .edge.on {
   opacity: 1;
-  stroke-width: 2.5;
 }
 
-.edge.human.on {
+.edge.human {
   stroke: var(--id-human);
 }
 
-.edge.workload.on {
+.edge.workload {
   stroke: var(--id-workload);
 }
 
-.edge.bridge.on {
+.edge.bridge {
   stroke: var(--id-bridge);
 }
 
-.edge.ink.on {
-  stroke: var(--surface-ink);
+.edge.forbidden {
+  stroke: var(--verdict-deny);
+  stroke-dasharray: 4 4;
+  opacity: 0.35;
+}
+
+.edge.forbidden.on {
+  opacity: 1;
 }
 
 .packet {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 260ms ease;
 }
 
 .packet.on {
@@ -63,134 +92,82 @@ svg {
   fill: var(--id-bridge);
 }
 
-.fill-human {
-  fill: var(--id-human);
-}
-
-.fill-workload {
-  fill: var(--id-workload);
-}
-
-.fill-bridge {
-  fill: var(--id-bridge);
-}
-
-.fill-ink {
-  fill: var(--surface-ink);
-}
-
 .lbl {
-  fill: var(--text-muted);
-  opacity: 0.5;
-  transition: opacity 200ms ease;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--text-secondary);
+  opacity: 0.4;
+  transition: opacity 260ms ease;
 }
 
 .lbl.on {
   opacity: 1;
-  fill: var(--text-primary);
 }
 
-.lbl.sub.on {
-  fill: var(--text-tertiary);
+.lbl.bridge {
+  fill: var(--id-bridge);
 }
 
-.node rect {
-  fill: var(--surface-panel);
-  stroke-width: 2;
+.lbl.deny {
+  fill: var(--verdict-deny);
 }
 
-.node.human rect {
-  stroke: var(--id-human);
-}
-
-.node.workload rect {
-  stroke: var(--id-workload);
-}
-
-.node.ink rect {
-  stroke: var(--surface-ink);
-}
-
-.node.dashed rect {
-  stroke-dasharray: 6 4;
-}
-
-.node .kicker {
-  font-size: 11px;
-  letter-spacing: 1.2px;
-}
-
-.node.human .kicker {
-  fill: var(--id-human);
-}
-
-.node.workload .kicker {
-  fill: var(--id-workload);
-}
-
-.node.ink .kicker {
-  fill: var(--surface-ink);
-}
-
-.node .name {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 22px;
-  fill: var(--text-primary);
-}
-
-/* ── second hop (M12/D-032) ── */
-
-/* Workloads that exist but took no part in this run: dimmed, never hidden.
-   The topology is a constant; participation is what changes. */
 .node {
   transition: opacity 260ms ease;
 }
 
+/* Workloads that exist but took no part in this run: dimmed, never hidden. */
 .node.dim {
   opacity: 0.26;
 }
 
-/* The scope a workload may hold, on the node itself — non-overlap is then
+.card {
+  fill: var(--surface-panel);
+  stroke: var(--border-strong);
+}
+
+.node.dashed .card {
+  stroke-dasharray: 5 4;
+}
+
+.topbar {
+  stroke: none;
+}
+
+.node.human .topbar {
+  fill: var(--id-human);
+}
+
+.node.workload .topbar {
+  fill: var(--id-workload);
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 500;
+  fill: var(--text-primary);
+}
+
+/* The scope a workload may hold, on the actor itself — non-overlap is then
    visible in the picture rather than asserted in prose. */
 .scope-pill {
   fill: var(--custody-badge-bg);
-  stroke: var(--id-workload);
-  stroke-width: 1.5;
 }
 
 .scope-text {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 10px;
   fill: var(--custody-badge-text);
-}
-
-/* The refused path is DRAWN, always. It is the strongest thing on the
-   diagram and it must not appear only on failure. */
-.edge.forbidden {
-  stroke: var(--verdict-deny);
-  stroke-dasharray: 9 7;
-  opacity: 0.45;
-}
-
-.edge.forbidden.on {
-  opacity: 1;
-}
-
-.forbidden-lbl {
-  fill: var(--verdict-deny);
-  font-size: 16px;
 }
 
 .xbg {
   fill: var(--surface-panel);
   stroke: var(--verdict-deny);
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
 .xmark {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 22px;
+  font-size: 12px;
+  font-weight: 600;
   fill: var(--verdict-deny);
 }

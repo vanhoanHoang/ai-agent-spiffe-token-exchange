@@ -1,19 +1,17 @@
 <header>
   <div class="inner">
-    <div>
-      <h1>Two identities, one call</h1>
-    </div>
+    <h1>Two identities, one call</h1>
     <div class="chips">
-      <div class="chip teal">
-        <span class="chip-label">Trust domain</span>
+      <div class="chip">
+        <span class="dot workload"></span>
         <span class="chip-value">{{ run().trust_domain }}</span>
       </div>
-      <div class="chip blue">
-        <span class="chip-label">Issuer</span>
+      <div class="chip">
+        <span class="dot human"></span>
         <span class="chip-value">{{ issuer() }}</span>
       </div>
-      <div class="chip orange">
-        <span class="chip-label">Resource</span>
+      <div class="chip">
+        <span class="dot ink"></span>
         <span class="chip-value">{{ run().actors.mcp_server.resource_id }}</span>
       </div>
     </div>

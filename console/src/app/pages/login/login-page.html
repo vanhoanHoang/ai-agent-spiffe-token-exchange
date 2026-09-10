@@ -1,10 +1,15 @@
 <div class="wrap">
   <div class="card">
-    <p class="kicker">SPIFFE × OIDC × MCP</p>
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+      <rect class="mark-ground" width="32" height="32" rx="7" />
+      <circle class="mark-link" cx="12.5" cy="16" r="6.4" />
+      <circle class="mark-bridge" cx="19.5" cy="16" r="6.4" />
+      <path class="mark-link" d="M17.1,11.4 A6.4,6.4 0 0 1 17.1,20.6" />
+    </svg>
     <h1>Two identities, one call</h1>
     <p class="lede">
       An AI agent calls an MCP server with a token that proves which human it
-      acts for and which workload it is. Sign in to run the chain live.
+      acts for and which workload it is.
     </p>
 
     @if (session.state() === 'offline') {
@@ -16,20 +21,18 @@
       <div class="choices">
         <a class="btn" href="/oauth2/authorization/keycloak">
           <span class="btn-title">Sign in</span>
-          <span class="btn-sub">standard scopes. The audit tool will be refused</span>
         </a>
         <a class="btn human" href="/oauth2/authorization/keycloak-audit">
           <span class="btn-title">Sign in with audit scope</span>
-          <span class="btn-sub">adds mcp:audit. What you consent to decides what the agent may do</span>
         </a>
       </div>
       <button type="button" class="browse" (click)="browse()">
-        or browse the recorded evidence without signing in
+        Browse the recorded evidence
       </button>
     }
 
     <p class="foot">
-      trust domain <code>spiffe://ai-agent.id.eviden.internal</code> · no client secret exists anywhere
+      <code>spiffe://ai-agent.id.eviden.internal</code>
     </p>
   </div>
 </div>

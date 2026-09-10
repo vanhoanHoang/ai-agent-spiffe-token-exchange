@@ -109,4 +109,51 @@ describe('LiveChat', () => {
     const fixture = await render({ answer: 'x' });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('no mcp:audit');
   });
+
+  // ── M15 consent-on-demand ──
+
+  it('stops at the consent wall: card names the scopes, no hops, no error bubble', async () => {
+    const fixture = await render({ error: 'stream ended without an answer' }, [
+      ['consent', 'onboard:initiate issue:employee-cert'],
+    ]);
+    await sendMessage(fixture, 'onboard John, he starts Monday');
+    const el = fixture.nativeElement as HTMLElement;
+    const card = el.querySelector('.consent');
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain('onboard:initiate');
+    expect(card?.textContent).toContain('issue:employee-cert');
+    expect(el.querySelector<HTMLAnchorElement>('a.approve')?.getAttribute('href'))
+      .toBe('/oauth2/authorization/keycloak-elevate');
+    // The chain never ran and nothing failed — no hops, no error state.
+    expect(el.querySelectorAll('.hopgroup').length).toBe(0);
+    expect(el.querySelector('.bubble.err')).toBeNull();
+    expect(el.querySelector('.panel')?.getAttribute('data-phase')).toBe('idle');
+  });
+
+  it('resumes the stashed prompt after the step-up login returns', async () => {
+    sessionStorage.setItem('dc-pending-prompt', 'onboard John, he starts Monday');
+    const asked: string[] = [];
+    await TestBed.configureTestingModule({
+      imports: [LiveChat],
+      providers: [
+        {
+          provide: LiveClient,
+          useValue: {
+            me: () => Promise.resolve('offline'),
+            chatStream: (m: string) => {
+              asked.push(m);
+              return Promise.resolve({ answer: 'Certificate issued.' });
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(LiveChat);
+    fixture.componentRef.setInput('user', { username: 'alice', scopes: ['onboard:initiate'] });
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(asked).toEqual(['onboard John, he starts Monday']);
+    expect(sessionStorage.getItem('dc-pending-prompt')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Certificate issued.');
+  });
 });

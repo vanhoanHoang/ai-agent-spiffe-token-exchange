@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**
- * The mockup's animated architecture diagram (SMIL animateMotion, exactly as
- * the mockup does it), extended for the two-hop delegation flow (M12/D-032).
+ * Swimlane sequence diagram (v2/D-037): actors across the top, time flows
+ * down, messages horizontal — packets still ride the lit edges via SMIL
+ * animateMotion. Covers both delegation hops (M12/D-032).
  *
- * Two additions carry the second hop:
+ * Two rules carry the second hop:
  *  - agent-pki and cert-service are drawn, each with the scope it may hold,
  *    so the non-overlap is visible on the picture itself;
  *  - agent-client → cert-service is DRAWN as refused, not omitted. An edge

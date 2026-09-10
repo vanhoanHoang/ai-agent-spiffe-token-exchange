@@ -1,5 +1,5 @@
 <div class="rail">
-  @for (s of stages(); track s.id) {
+  @for (s of stages(); track s.id; let last = $last) {
     <button
       type="button"
       class="step"
@@ -7,14 +7,11 @@
       [attr.data-role]="s.role"
       (click)="picked.emit(s.id)"
     >
-      <span class="bar">
-        <span class="num">{{ s.num }}</span>
-        <span class="kind">{{ s.kindLabel }}</span>
-      </span>
-      <span class="body">
-        <span class="title">{{ s.title }}</span>
-        <span class="hint">{{ s.hint }}</span>
-      </span>
+      <span class="num">{{ s.num }}</span>
+      <span class="title">{{ s.title }}</span>
     </button>
+    @if (!last) {
+      <span class="link"></span>
+    }
   }
 </div>

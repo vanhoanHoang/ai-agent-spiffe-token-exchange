@@ -42,6 +42,22 @@ interface TraceGroup {
 
 type Phase = 'idle' | 'flight' | 'done' | 'error';
 
+/** Survives the step-up redirect (M15): the prompt that hit the consent wall,
+ *  never anything credential-shaped. */
+const PENDING_KEY = 'dc-pending-prompt';
+
+/** OIDC identity and audience plumbing — real scopes on the wire, but not
+ *  permissions the human granted for a task. Showing them as if they were
+ *  reads as authority that was never asked for; the header hides them. */
+const PROTOCOL_SCOPES: ReadonlySet<string> = new Set([
+  'openid',
+  'profile',
+  'email',
+  'agent-audience',
+  'pki-audience',
+  'mcp-audience',
+]);
+
 /** What each event means, in the reader's language rather than the wire's. */
 const STEP_LABEL: Readonly<Record<string, string>> = {
   svid: 'proved which workload it is',
@@ -76,6 +92,9 @@ export class LiveChat {
   protected readonly draft = signal<string | null>(null);
   protected readonly pending = signal(false);
   protected readonly phase = signal<Phase>('idle');
+  /** M15: scopes the task needs but this session was never granted. */
+  protected readonly consentScopes = signal<readonly string[]>([]);
+  private lastPrompt = '';
   private readonly raw = signal<readonly RawChainEvent[]>([]);
   private readonly thread = viewChild<ElementRef<HTMLDivElement>>('thread');
 
@@ -94,6 +113,13 @@ export class LiveChat {
   protected readonly delegated = computed(() => this.hops() >= 2);
   protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
 
+  /** Task permissions only — empty until a task triggers the step-up (M15). */
+  protected readonly taskScopeLine = computed(() =>
+    this.user()
+      .scopes.filter((s) => !PROTOCOL_SCOPES.has(s))
+      .join(' '),
+  );
+
   constructor() {
     // Keep the thread pinned to the newest message as bubbles arrive.
     effect(() => {
@@ -107,6 +133,31 @@ export class LiveChat {
         });
       }
     });
+    this.resumePending();
+  }
+
+  /** After the step-up login lands back here, re-send the prompt that hit the
+   *  consent wall — the human should not have to retype their sentence. */
+  private resumePending(): void {
+    let pendingPrompt: string | null = null;
+    try {
+      pendingPrompt = sessionStorage.getItem(PENDING_KEY);
+      sessionStorage.removeItem(PENDING_KEY);
+    } catch {
+      // storage unavailable (private mode): nothing to resume
+    }
+    if (pendingPrompt !== null && pendingPrompt !== '') {
+      void this.run(pendingPrompt);
+    }
+  }
+
+  /** Stash the prompt, then the anchor navigates to the step-up login. */
+  protected approve(): void {
+    try {
+      sessionStorage.setItem(PENDING_KEY, this.lastPrompt);
+    } catch {
+      // the redirect still works; the human retypes the prompt
+    }
   }
 
   protected view(stageId: string): void {
@@ -124,6 +175,11 @@ export class LiveChat {
 
   /** Each REAL completion from the server stream extends the trace. */
   private onEvent(step: string, detail: string): void {
+    if (step === 'consent') {
+      // Not a chain event — the chain never ran. The card is the answer.
+      this.consentScopes.set(detail.split(/\s+/).filter((s) => s !== ''));
+      return;
+    }
     this.raw.update((r) => [...r, { step, detail }]);
     const lit = this.events().at(-1);
     if (lit !== undefined) {
@@ -132,12 +188,21 @@ export class LiveChat {
   }
 
   private async run(message: string): Promise<void> {
+    this.lastPrompt = message;
     this.pending.set(true);
     this.draft.set(message);
     this.phase.set('flight');
     this.raw.set([]);
+    this.consentScopes.set([]);
 
     const res = await this.live.chatStream(message, (s, d) => this.onEvent(s, d));
+    if (this.consentScopes().length > 0 && res.answer === undefined) {
+      // The wall came without a model answer — the card alone is the answer.
+      this.draft.set(null);
+      this.phase.set('idle');
+      this.pending.set(false);
+      return;
+    }
     const error = res.answer === undefined;
     this.turns.update((t) => [...t, { q: message, a: res.answer ?? res.error ?? 'no response', error }]);
     this.draft.set(null);

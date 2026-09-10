@@ -2,7 +2,11 @@
   <div class="bar">
     <span>Acting for {{ user().username }}</span>
     <span class="scopes">
-      scopes: {{ user().scopes.join(' ') }}
+      @if (taskScopeLine() !== '') {
+        may act on: {{ taskScopeLine() }}
+      } @else {
+        no task permissions yet — granted when a task needs them
+      }
       @if (!hasAudit()) {
         <em> · no mcp:audit</em>
       }
@@ -44,6 +48,22 @@
         <div class="row agent">
           <div class="who">agent</div>
           <div class="bubble agent" [class.err]="t.error">{{ t.a }}</div>
+        </div>
+      }
+      @if (consentScopes().length > 0) {
+        <div class="row agent">
+          <div class="who">agent</div>
+          <div class="consent" role="alert">
+            <p class="consent-lead">This task needs your approval:</p>
+            <p class="consent-scopes">
+              @for (s of consentScopes(); track s) {
+                <code>{{ s }}</code>
+              }
+            </p>
+            <a class="approve" href="/oauth2/authorization/keycloak-elevate" (click)="approve()">
+              Approve in Keycloak
+            </a>
+          </div>
         </div>
       }
       @if (draft(); as d) {

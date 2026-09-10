@@ -1,5 +1,13 @@
 <header class="topbar">
-  <a class="brand" routerLink="/">Identity Console</a>
+  <a class="brand" routerLink="/">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+      <rect class="mark-ground" width="32" height="32" rx="7" />
+      <circle class="mark-link" cx="12.5" cy="16" r="6.4" />
+      <circle class="mark-bridge" cx="19.5" cy="16" r="6.4" />
+      <path class="mark-link" d="M17.1,11.4 A6.4,6.4 0 0 1 17.1,20.6" />
+    </svg>
+    Identity Console
+  </a>
   <span class="env">spiffe://ai-agent.id.eviden.internal</span>
   <span class="spacer"></span>
   @if (session.user(); as u) {

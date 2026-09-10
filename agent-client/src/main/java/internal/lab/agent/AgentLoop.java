@@ -1,10 +1,13 @@
 package internal.lab.agent;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import internal.lab.delegation.DelegatedExchange;
 import io.modelcontextprotocol.client.McpSyncClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.chat.client.ChatClient;
@@ -52,6 +55,18 @@ public class AgentLoop {
     private final IssuedCertHolder issued;
     private boolean mcpInitialized;
 
+    /**
+     * M15 consent-on-demand (D-038): the tool that opens the delegation chain,
+     * and the scopes that chain needs end to end. When the model picks that
+     * tool and the human never granted those scopes, the call is refused
+     * BEFORE anything runs — no half-done side effects — with a `consent`
+     * step naming what is missing. Identity-only questions (whoami, audit)
+     * never hit this wall. UX preflight, not enforcement: the AS refuses an
+     * unconsented exchange regardless (D-031/D-033).
+     */
+    private final String chainTool;
+    private final Set<String> chainScopes;
+
     AgentLoop(ChatModel chatModel,
             @Qualifier("mcpSyncClient") McpSyncClient mcp,
             @Qualifier("pkiMcpClient") McpSyncClient pki,
@@ -62,6 +77,23 @@ public class AgentLoop {
         this.exchange = exchange;
         this.bearer = bearer;
         this.issued = issued;
+        this.chainTool = System.getenv().getOrDefault("CHAIN_TOOL", "onboard_employee");
+        this.chainScopes = Arrays.stream(System.getenv()
+                        .getOrDefault("CHAIN_REQUIRED_SCOPES", "onboard:initiate issue:employee-cert")
+                        .split("[ ,]+"))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /** The chain scopes the human has NOT granted this session (empty = all set). */
+    private String missingScopes(String subjectToken) {
+        Set<String> granted = Arrays.stream(DelegatedExchange.delegatedScope(subjectToken).split("\\s+"))
+                .collect(Collectors.toUnmodifiableSet());
+        return chainScopes.stream()
+                .filter(s -> !granted.contains(s))
+                .sorted()
+                .reduce((a, b) -> a + " " + b)
+                .orElse("");
     }
 
     String ask(String subjectToken, String userMessage) throws Exception {
@@ -71,6 +103,7 @@ public class AgentLoop {
     /** Same loop, narrated: emits each REAL step (svid, exchange, every tool
      *  call) as it completes — the P6.1 live display. Labels only, no tokens. */
     String ask(String subjectToken, String userMessage, Consumer<StepEvent> events) throws Exception {
+        String missing = missingScopes(subjectToken);
         bearer.set(exchange.exchange(subjectToken, events));
         try {
             ensureMcpInitialized();
@@ -79,7 +112,7 @@ public class AgentLoop {
                     .toolNamePrefixGenerator(McpToolNamePrefixGenerator.noPrefix())
                     .build();
             ToolCallback[] narrated = Arrays.stream(tools.getToolCallbacks())
-                    .map(t -> narrating(t, events, issued))
+                    .map(t -> narrating(t, events, issued, chainTool, missing))
                     .toArray(ToolCallback[]::new);
             String answer = ChatClient.builder(chatModel)
                     .defaultToolCallbacks(narrated)
@@ -143,9 +176,10 @@ public class AgentLoop {
     }
 
     /** Wraps a tool callback so the REAL invocation (the model's decision,
-     *  going out over mTLS with the exchanged bearer) is announced. */
+     *  going out over mTLS with the exchanged bearer) is announced — and so
+     *  the chain-opening tool hits the consent wall when scopes are missing. */
     private static ToolCallback narrating(ToolCallback delegate, Consumer<StepEvent> events,
-            IssuedCertHolder issued) {
+            IssuedCertHolder issued, String chainTool, String missingScopes) {
         return new ToolCallback() {
             @Override
             public ToolDefinition getToolDefinition() {
@@ -157,8 +191,24 @@ public class AgentLoop {
                 return delegate.getToolMetadata();
             }
 
+            /** Non-null = the wall: the tool never runs, the console gets the
+             *  `consent` step, the model gets an honest refusal to relay. */
+            private String consentWall() {
+                if (missingScopes.isEmpty() || !delegate.getToolDefinition().name().equals(chainTool)) {
+                    return null;
+                }
+                events.accept(new StepEvent("consent", missingScopes));
+                return "REFUSED: consent_required. This task needs the human's approval for: "
+                        + missingScopes + ". Tell the user you cannot proceed until they approve "
+                        + "— their approval prompt is already on screen. Do not retry.";
+            }
+
             @Override
             public String call(String toolInput) {
+                String wall = consentWall();
+                if (wall != null) {
+                    return wall;
+                }
                 events.accept(new StepEvent("tool", delegate.getToolDefinition().name()));
                 String result = delegate.call(toolInput);
                 relayReportedHop(result, events);
@@ -167,6 +217,10 @@ public class AgentLoop {
 
             @Override
             public String call(String toolInput, ToolContext toolContext) {
+                String wall = consentWall();
+                if (wall != null) {
+                    return wall;
+                }
                 events.accept(new StepEvent("tool", delegate.getToolDefinition().name()));
                 String result = delegate.call(toolInput, toolContext);
                 relayReportedHop(result, events);

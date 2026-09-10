@@ -10,7 +10,7 @@
   color: var(--text-on-ink);
   padding: 7px 16px;
   font-size: 10.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   display: flex;
   justify-content: space-between;
@@ -19,7 +19,7 @@
 
 .reload {
   font: inherit;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   color: inherit;
@@ -88,7 +88,7 @@
 
 .role {
   font-size: 10.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -96,8 +96,8 @@
 .name {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 19px;
-  line-height: 1.2;
+  font-size: 14px;
+  line-height: 1.25;
   margin-top: 1px;
 }
 

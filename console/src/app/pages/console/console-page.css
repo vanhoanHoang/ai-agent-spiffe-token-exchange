@@ -2,34 +2,73 @@ main {
   max-width: 1560px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-8) var(--space-8);
+}
+
+/* The cockpit (v2/D-037): chat drives on the left, the stage reacts on the
+   right. Only the live view has a rail — a recorded run has no chat. */
+main.cockpit {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  main.cockpit {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rail {
+  position: sticky;
+  top: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-4);
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+.stagecol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.stage-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.spacer {
+  flex: 1;
 }
 
 .kicker {
-  font-size: 10.5px;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .tab {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 21px;
-  letter-spacing: 0.03em;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
   color: var(--text-muted);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 0 0 4px;
+  padding: 0 0 8px;
   cursor: pointer;
 }
 
 .tab.on {
+  font-weight: var(--font-heading-weight);
   color: var(--text-primary);
-  border-bottom-color: var(--id-bridge);
+  border-bottom-color: var(--text-primary);
 }
 
 .section-head {
@@ -40,9 +79,9 @@ main {
 }
 
 .section-head h2 {
-  font-size: 21px;
+  font-size: 14px;
   margin: 0;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
 }
 
 .rule {
@@ -54,7 +93,7 @@ main {
   background: var(--surface-panel);
   border: 1px solid var(--border-panel);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-6);
 }
 
 .stage-head {
@@ -65,15 +104,15 @@ main {
 }
 
 .stage-head h3 {
-  font-size: 27px;
+  font-size: 16px;
   margin: 0;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .stage-tag {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 3px 9px;
   border-radius: var(--radius-sm);
@@ -94,18 +133,18 @@ main {
 }
 
 .narration {
-  margin: 11px 0 0;
-  font-size: 20px;
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
   line-height: 1.5;
-  max-width: 105ch;
+  max-width: 90ch;
   text-wrap: pretty;
 }
 
 .proves {
-  margin: 7px 0 0;
-  font-size: 16.5px;
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
   color: var(--text-secondary);
-  max-width: 105ch;
+  max-width: 90ch;
   text-wrap: pretty;
 }
 
@@ -118,72 +157,67 @@ main {
 
 .play {
   font: inherit;
-  font-size: 12.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  color: var(--id-bridge);
-  background: none;
-  border: 1px solid var(--id-bridge);
+  color: var(--surface-panel);
+  background: var(--text-primary);
+  border: none;
   border-radius: var(--radius-sm);
-  padding: 4px 12px;
+  padding: 6px 16px;
 }
 
 .view-switch {
   display: flex;
-  gap: 6px;
-  border-bottom: 1px solid var(--border-panel);
+  align-self: flex-start;
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .vtab {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 16px;
-  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
   color: var(--text-muted);
   background: none;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  padding: 8px 18px;
+  border: none;
+  padding: 6px 14px;
   cursor: pointer;
 }
 
 .vtab.on {
-  color: var(--text-primary);
-  background: var(--surface-panel);
-  border-color: var(--border-panel);
-  margin-bottom: -1px;
+  color: var(--surface-panel);
+  background: var(--text-primary);
 }
 
 .provenance {
-  background: var(--custody-badge-bg);
+  background: var(--surface-panel);
   border: 1px solid var(--border-panel);
-  border-left: 3px solid var(--id-bridge);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .prov-tag {
   display: inline-block;
-  font-size: 10.5px;
-  letter-spacing: 0.18em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-on-ink);
-  background: var(--id-bridge);
+  color: var(--custody-badge-text);
+  background: var(--custody-badge-bg);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
-  margin-right: 8px;
+  margin-right: var(--space-2);
 }
 
 .awaiting {
-  border: 1px dashed var(--border-panel);
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   color: var(--text-muted);
-  font-style: italic;
   text-align: center;
   margin: 0;
 }
@@ -191,7 +225,6 @@ main {
 .guest-note {
   background: var(--surface-panel);
   border: 1px solid var(--border-panel);
-  border-left: 3px solid var(--id-bridge);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   color: var(--text-secondary);
@@ -209,15 +242,14 @@ main {
   max-width: 640px;
   margin: 10vh auto;
   border: 1px solid var(--verdict-deny);
-  border-top: 3px solid var(--verdict-deny);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-6);
 }
 
 .error-hint {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .loading {
