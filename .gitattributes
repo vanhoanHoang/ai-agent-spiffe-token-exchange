@@ -1,3 +1,19 @@
 # Shell scripts stay LF in every working copy: Git-for-Windows bash happens to
 # tolerate CRLF, but Linux/macOS bash and anything run inside a container do not.
 *.sh text eol=lf
+# Everything text stays LF too: server.conf/agent.conf, realm JSON, properties
+# and compose files are bind-mounted or parsed inside Linux containers, and a
+# fresh Windows clone with autocrlf=true would otherwise smudge them all.
+* text=auto eol=lf
+# cmd.exe misparses labels/goto in LF-only batch files.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
+*.jar binary
+*.p12 binary
+*.pfx binary
+*.der binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

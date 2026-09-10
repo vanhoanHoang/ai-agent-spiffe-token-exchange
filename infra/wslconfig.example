@@ -1,0 +1,13 @@
+# Copy to %USERPROFILE%\.wslconfig (C:\Users\<you>\.wslconfig), then run
+# `wsl --shutdown` and restart Docker Desktop. WSL2 backs Docker Desktop; without
+# this file WSL claims 50% of RAM and never hands it back once a container has
+# touched it. The stack idles at ~2.5 GiB; EJBCA's first init peaks higher.
+[wsl2]
+memory=6GB
+swap=2GB
+
+# On WSL 2.2.x these two still live under [experimental]; they are ignored if
+# placed in [wsl2].
+[experimental]
+autoMemoryReclaim=gradual
+sparseVhd=true
