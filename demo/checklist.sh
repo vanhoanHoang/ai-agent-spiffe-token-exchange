@@ -4,6 +4,8 @@
 # acceptance (a few minutes).
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=../infra/llm-env.sh
+. infra/llm-env.sh
 FAIL=0
 say()  { printf '%-52s %s\n' "$1" "$2"; }
 ok()   { say "$1" "OK"; }
@@ -17,15 +19,26 @@ if [ "$KC_TIME" = 0 ]; then bad "clock skew (keycloak container)" "container not
 elif [ "$SKEW" -le 30 ]; then ok "clock skew host<->keycloak (${SKEW}s)"
 else bad "clock skew host<->keycloak" "${SKEW}s — fix this before touching anything else"; fi
 
-# 2. Services healthy (core + demo profile).
-for svc in spire-server spire-agent keycloak mcp-server ollama agent-web; do
+# 2. Services healthy (core + demo profile; ollama only when it is the provider).
+svcs="spire-server spire-agent keycloak mcp-server agent-web"
+[ "$LLM_PROVIDER" = ollama ] && svcs="$svcs ollama"
+for svc in $svcs; do
   state=$(docker inspect -f '{{.State.Health.Status}}' "spiffe-mcp-lab-${svc}-1" 2>/dev/null || echo missing)
   [ "$state" = healthy ] && ok "service $svc" || bad "service $svc" "$state"
 done
 
-# 3. Demo model present (never pulled mid-demo).
-docker exec spiffe-mcp-lab-ollama-1 ollama list 2>/dev/null | grep -q "qwen3.5:4b" \
-  && ok "demo model qwen3.5:4b present" || bad "demo model" "run infra/ollama/pull-model.sh"
+# 3. The model is reachable (never pulled or discovered mid-demo). D-039:
+#    local => the pinned model sits in the volume; hosted => the endpoint
+#    answers with the key and lists the pinned model. Same question either way.
+if [ "$LLM_PROVIDER" = ollama ]; then
+  docker exec spiffe-mcp-lab-ollama-1 ollama list 2>/dev/null | grep -q "qwen3.5:4b" \
+    && ok "demo model qwen3.5:4b present (local)" || bad "demo model" "run infra/ollama/pull-model.sh"
+else
+  if [ -z "$LLM_API_KEY" ]; then bad "LLM $LLM_PROVIDER key" "LLM_API_KEY empty (infra/.env)"
+  elif curl -s --max-time 10 -H "Authorization: Bearer $LLM_API_KEY" "$LLM_BASE_URL/models" 2>/dev/null \
+         | grep -q "\"id\": *\"$LLM_MODEL\""; then ok "demo model $LLM_MODEL present (hosted, $LLM_BASE_URL)"
+  else bad "demo model $LLM_MODEL" "$LLM_BASE_URL/models did not list it with this key"; fi
+fi
 
 # 4. Ports answering from the host.
 curl -s -o /dev/null --max-time 5 http://localhost:8080/realms/ai-agents/.well-known/openid-configuration \

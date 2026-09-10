@@ -7,6 +7,8 @@
 #            Asks first — this is the ask-first boundary of CLAUDE.md §7.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=../infra/llm-env.sh
+. infra/llm-env.sh
 
 MODE="${1:---soft}"
 START=$(date +%s)
@@ -16,7 +18,7 @@ case "$MODE" in
     echo "COLD RESET deletes the SPIRE and EJBCA volumes (CA state, registrations)."
     read -r -p "Type 'yes' to proceed: " ok
     [ "$ok" = "yes" ] || { echo "aborted"; exit 1; }
-    (cd infra && docker compose --profile demo --profile pki --profile tools down -v)
+    (cd infra && docker compose --profile demo --profile pki --profile tools --profile llm-local down -v)
     echo "Volumes gone. Re-running full setup (EJBCA hierarchy takes a while)..."
     bash infra/pki/setup-ejbca.sh
     # M12: employee profiles + the RA credential for cert-service (this script
@@ -24,7 +26,7 @@ case "$MODE" in
     bash infra/pki/setup-employee-profile.sh --force
     ;;
   --full)
-    (cd infra && docker compose --profile demo down) >/dev/null
+    (cd infra && docker compose --profile demo --profile llm-local down) >/dev/null
     ;;
   --soft)
     (cd infra && docker compose restart mcp-server agent-web) >/dev/null 2>&1 || true
@@ -44,5 +46,5 @@ bash infra/keycloak/setup-two-hop.sh >/dev/null
 # pki profile: ejbca must run for the M12 issuance leg (no healthcheck defined,
 # so --wait only sees "running"; cert-service reads its RA credential lazily).
 (cd infra && docker compose --profile demo --profile pki up -d --wait --wait-timeout 300) >/dev/null
-bash infra/ollama/pull-model.sh >/dev/null
-echo "RESET OK ($MODE) in $(( $(date +%s) - START ))s — stack + demo + pki profiles up, model present"
+bash infra/ollama/pull-model.sh >/dev/null   # starts ollama + pulls only when LLM_PROVIDER=ollama (D-039)
+echo "RESET OK ($MODE) in $(( $(date +%s) - START ))s — stack + demo + pki profiles up, LLM provider: $LLM_PROVIDER"

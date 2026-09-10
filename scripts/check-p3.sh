@@ -10,6 +10,8 @@
 #  - ./infra/acceptance.sh still exits 0, untouched.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=../infra/llm-env.sh
+. infra/llm-env.sh
 dkr() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker "$@"; }
 fail() { echo "P3 FAIL: $1"; exit 1; }
 
@@ -24,7 +26,7 @@ bash infra/pki/issue-bundle-endpoint-cert.sh >/dev/null
 bash infra/spire/register-workloads.sh >/dev/null
 bash infra/keycloak/setup-realm.sh >/dev/null
 bash infra/keycloak/setup-spiffe-idp.sh >/dev/null || fail "keycloak setup failed"
-(cd infra && docker compose --profile demo up -d --wait --wait-timeout 300) >/dev/null || fail "stack (incl. ollama) not healthy"
+(cd infra && docker compose --profile demo up -d --wait --wait-timeout 300) >/dev/null || fail "stack (demo profile) not healthy"
 bash infra/ollama/pull-model.sh >/dev/null || fail "demo model pull failed"
 
 USER_TOKEN=$(curl -s -d grant_type=password -d client_id=test-caller -d username=alice -d password=alice-password \
@@ -41,6 +43,7 @@ ac() { dkr run --rm --label org.lab.workload=agent-client --network "$NET" \
     -v "$SOCK_VOL":/tmp/spire-agent/public:ro \
     -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spire-agent/public/api.sock \
     -e SUBJECT_TOKEN="$USER_TOKEN" \
+    $(llm_docker_env) \
     "$IMG" "$@" 2>/dev/null; }
 
 T0=$(date -u '+%Y-%m-%dT%H:%M:%SZ')

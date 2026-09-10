@@ -60,6 +60,15 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-ollama</artifactId>
         </dependency>
+        <!-- Second wire protocol (D-039): any OpenAI-compatible hosted endpoint
+             (Groq for the demo). Both starters ship; Spring AI's own selector
+             `spring.ai.model.chat` (bound to LLM_PROVIDER, default ollama)
+             decides which ChatModel autoconfigures — verified from both
+             autoconfigure jars, not recalled. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
         <!-- SyncMcpToolCallbackProvider + the MCP Java SDK (aggregator: mcp-core
              + mcp-json-jackson3), versions managed by the BOM (D-010). -->
         <dependency>

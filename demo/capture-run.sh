@@ -6,6 +6,8 @@
 # refuses to write if anything JWT-shaped survives).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=../infra/llm-env.sh
+. infra/llm-env.sh
 dkr() { MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker "$@"; }
 fail() { echo "CAPTURE FAIL: $1"; exit 1; }
 
@@ -37,6 +39,7 @@ ac() { dkr run --rm --label org.lab.workload=agent-client --network "$NET" \
     -v "$SOCK_VOL":/tmp/spire-agent/public:ro \
     -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spire-agent/public/api.sock \
     ${TOKEN+-e TOKEN="$TOKEN"} -e SUBJECT_TOKEN="$USER_TOKEN" \
+    $(llm_docker_env) \
     "$IMG" "$@" 2>/dev/null; }
 
 out=$(ac token "$TOKEN_EP")

@@ -95,13 +95,15 @@ services:
       dockerfile: agent-client/Dockerfile
     networks: [lab]
 
-  # ---- profile: demo (M10) ------------------------------------------------
-  # Local LLM for the demo track. No credentials exist; no host port is
-  # published — only workloads on the lab network can reach it. The model
-  # (docs/VERSIONS.md, D-010) is pre-pulled by infra/ollama/pull-model.sh
-  # into the named volume; nothing pulls at runtime.
+  # ---- profile: llm-local (M10, D-039) ------------------------------------
+  # Local LLM, the default provider (LLM_PROVIDER=ollama). No credentials
+  # exist; no host port is published — only workloads on the lab network can
+  # reach it. The model (docs/VERSIONS.md, D-010) is pre-pulled by
+  # infra/ollama/pull-model.sh into the named volume; nothing pulls at runtime.
+  # Its own profile so a machine on a hosted provider never builds, pulls, or
+  # runs it; infra/ollama/pull-model.sh enables the profile when it applies.
   ollama:
-    profiles: [demo]
+    profiles: [llm-local]
     image: ollama/ollama:0.32.5              # pinned per docs/VERSIONS.md (D-010)
     volumes:
       - ollama-models:/root/.ollama
@@ -128,9 +130,17 @@ services:
       keycloak: { condition: service_healthy }
       spire-agent: { condition: service_healthy }
       mcp-server: { condition: service_healthy }
-      ollama: { condition: service_healthy }
+      # No depends_on ollama: startup never contacts the model (pull strategy
+      # `never`), and the provider may be hosted (D-039).
     environment:
       SPIFFE_ENDPOINT_SOCKET: unix:/tmp/spire-agent/public/api.sock
+      # LLM deployment knobs (D-039, infra/llm-env.sh). Values come from the
+      # host environment or infra/.env (gitignored); the key has NO default —
+      # the default configuration holds zero credentials.
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      LLM_API_KEY: ${LLM_API_KEY:-}
     volumes:
       - spire-agent-socket:/tmp/spire-agent/public:ro
       # The console is baked into the image (D-024). For fast UI iteration,
