@@ -8,8 +8,6 @@
     </p>
   </div>
 } @else if (run(); as r) {
-  <dc-run-header [run]="r" />
-
   <main [class.cockpit]="view() === 'live'">
     @if (view() === 'live') {
       <aside class="rail">
@@ -85,7 +83,9 @@
               }
             }
           } @else if (stage().id === 'svid' && liveSvid(); as s) {
-            <dc-cert-panel [svid]="s" (reload)="loadSvid()" />
+            <dc-cert-panel [svid]="s" [jwt]="liveJwt()" (reload)="loadSvid()" />
+          } @else if (stage().id === 'call' && livePeer(); as p) {
+            <dc-peer-cert [peer]="p" />
           } @else {
             <p class="awaiting">
               This step runs in your session when you chat. Open the Recorded run

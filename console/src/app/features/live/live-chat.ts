@@ -46,18 +46,6 @@ type Phase = 'idle' | 'flight' | 'done' | 'error';
  *  never anything credential-shaped. */
 const PENDING_KEY = 'dc-pending-prompt';
 
-/** OIDC identity and audience plumbing — real scopes on the wire, but not
- *  permissions the human granted for a task. Showing them as if they were
- *  reads as authority that was never asked for; the header hides them. */
-const PROTOCOL_SCOPES: ReadonlySet<string> = new Set([
-  'openid',
-  'profile',
-  'email',
-  'agent-audience',
-  'pki-audience',
-  'mcp-audience',
-]);
-
 /** What each event means, in the reader's language rather than the wire's. */
 const STEP_LABEL: Readonly<Record<string, string>> = {
   svid: 'proved which workload it is',
@@ -111,14 +99,6 @@ export class LiveChat {
 
   /** Two hops means the assistant delegated rather than acted alone. */
   protected readonly delegated = computed(() => this.hops() >= 2);
-  protected readonly hasAudit = computed(() => this.user().scopes.includes('mcp:audit'));
-
-  /** Task permissions only — empty until a task triggers the step-up (M15). */
-  protected readonly taskScopeLine = computed(() =>
-    this.user()
-      .scopes.filter((s) => !PROTOCOL_SCOPES.has(s))
-      .join(' '),
-  );
 
   constructor() {
     // Keep the thread pinned to the newest message as bubbles arrive.

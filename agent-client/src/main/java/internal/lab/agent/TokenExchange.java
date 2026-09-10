@@ -73,7 +73,7 @@ public class TokenExchange {
         }
         JwtSvid svid = jwtSource.fetchJwtSvid(issuerIdentifier);
         events.accept(new StepEvent("svid",
-                "JWT-SVID minted for " + svid.getSpiffeId() + " (aud=" + issuerIdentifier + ")"));
+                "JWT-SVID minted for " + svid.getSpiffeId()));
 
         String scope = requestedScope(subjectToken);
         DelegatedExchange.Response res = DelegatedExchange.post(svid, tokenEndpoint, subjectToken, scope);

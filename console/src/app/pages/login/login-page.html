@@ -8,10 +8,6 @@
     </svg>
     <p class="kicker">Identity Console</p>
     <h1>Two identities, one call</h1>
-    <p class="lede">
-      An AI agent calls an MCP server with a token that proves which human it
-      acts for and which workload it is.
-    </p>
 
     <ol class="steps" aria-label="How a call is authorised">
       <li class="step human">
@@ -38,10 +34,6 @@
       <button type="button" class="btn alt" (click)="browse()">Browse the recorded evidence</button>
     } @else {
       <a class="btn" href="/oauth2/authorization/keycloak">Sign in</a>
-      <p class="hint">
-        Signing in grants identity only. The agent asks for task authority at the
-        moment a task needs it, and you approve it then.
-      </p>
     }
   </div>
 </div>

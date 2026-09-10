@@ -1,16 +1,6 @@
 <div class="panel" [attr.data-phase]="phase()">
   <div class="bar">
     <span>Acting for {{ user().username }}</span>
-    <span class="scopes">
-      @if (taskScopeLine() !== '') {
-        may act on: {{ taskScopeLine() }}
-      } @else {
-        no task permissions yet — granted when a task needs them
-      }
-      @if (!hasAudit()) {
-        <em> · no mcp:audit</em>
-      }
-    </span>
   </div>
 
   @for (g of trace(); track g.hop) {

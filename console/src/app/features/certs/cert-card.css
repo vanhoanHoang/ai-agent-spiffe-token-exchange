@@ -1,0 +1,124 @@
+.card {
+  background: var(--surface-panel);
+  border: 1px solid var(--id-workload);
+  border-top: 3px solid var(--id-workload);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bar {
+  background: var(--custody-badge-bg);
+  color: var(--custody-badge-text);
+  padding: 8px 16px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.reload {
+  font: inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid;
+  padding: 0 0 1px;
+}
+
+.download {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-on-ink);
+  background: var(--id-workload);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  text-decoration: none;
+}
+
+.download:hover {
+  opacity: 0.85;
+}
+
+.lead {
+  margin: 0;
+  padding: var(--space-3) 16px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.disclosure {
+  border-top: 1px solid var(--border-soft);
+  margin-top: var(--space-3);
+}
+
+.disclosure summary {
+  padding: 9px 16px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chain ol {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px var(--space-3) 16px;
+}
+
+.chain li {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  column-gap: var(--space-3);
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.chain .role {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  align-self: center;
+}
+
+.chain .name {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.chain .by {
+  grid-column: 2;
+  color: var(--text-muted);
+}
+
+.pem pre {
+  margin: 0;
+  padding: 0 16px var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+}
+
+.chain .note {
+  grid-column: 2;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--id-workload);
+}

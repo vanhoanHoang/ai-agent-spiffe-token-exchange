@@ -26,7 +26,8 @@ describe('LoginPage', () => {
     expect(el.querySelector('a[href="/oauth2/authorization/keycloak-audit"]')).toBeFalsy();
     expect(el.querySelector('.browse')).toBeFalsy();
     expect(el.querySelectorAll('.step').length).toBe(3);
-    expect(el.textContent).toContain('identity only');
+    // Identity only: one link, no scope hint to read — the consent screen says the rest.
+    expect(el.querySelector('.hint')).toBeNull();
   });
 
   it('offline: explains live mode is unavailable, offers the recorded evidence', async () => {

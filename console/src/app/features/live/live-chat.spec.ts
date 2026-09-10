@@ -105,9 +105,12 @@ describe('LiveChat', () => {
     expect(el.querySelector('.panel')?.getAttribute('data-phase')).toBe('error');
   });
 
-  it('warns when the consented scopes lack mcp:audit', async () => {
+  it('the header names the human only — no scope sentence to read on stage', async () => {
     const fixture = await render({ answer: 'x' });
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('no mcp:audit');
+    const bar = (fixture.nativeElement as HTMLElement).querySelector('.bar');
+    expect(bar?.textContent).toContain('Acting for');
+    expect(bar?.textContent).not.toContain('mcp:audit');
+    expect(bar?.textContent).not.toContain('task permissions');
   });
 
   // ── M15 consent-on-demand ──

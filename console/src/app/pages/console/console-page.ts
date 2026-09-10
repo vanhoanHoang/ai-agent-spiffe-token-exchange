@@ -9,8 +9,9 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { DemoRun, DemoStep, parseDemoRun } from '../../core/demo-run';
+import { DemoRun, DemoStep, DemoToken, parseDemoRun } from '../../core/demo-run';
 import { IssuedCert, LiveClient, LiveSvid } from '../../core/live';
+import { LiveIdentityClient } from '../../core/live-identity';
 import {
   callChecks,
   custodyHops,
@@ -23,10 +24,10 @@ import { SessionService } from '../../core/session';
 import { CallChecksPanel } from '../../features/call/call-checks-panel';
 import { CertPanel } from '../../features/certs/cert-panel';
 import { IssuedCertPanel } from '../../features/certs/issued-cert';
+import { PeerCert } from '../../features/certs/peer-cert';
 import { ChatPanel } from '../../features/chat/chat-panel';
 import { CustodyPanel } from '../../features/custody/custody-panel';
 import { FlowDiagram } from '../../features/diagram/flow-diagram';
-import { RunHeader } from '../../features/header/run-header';
 import { LiveChat } from '../../features/live/live-chat';
 import { LogPanel } from '../../features/log/log-panel';
 import { RejectionGrid } from '../../features/rejections/rejection-grid';
@@ -41,11 +42,11 @@ const SECOND_HOP_STAGES: readonly string[] = ['svid2', 'exchange2', 'issue'];
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
-    RunHeader,
     StepRail,
     TokenCard,
     CertPanel,
     IssuedCertPanel,
+    PeerCert,
     CustodyPanel,
     CallChecksPanel,
     ChatPanel,
@@ -59,6 +60,7 @@ const SECOND_HOP_STAGES: readonly string[] = ['svid2', 'exchange2', 'issue'];
 })
 export class ConsolePage {
   private readonly liveClient = inject(LiveClient);
+  private readonly identity = inject(LiveIdentityClient);
   protected readonly session = inject(SessionService);
 
   protected readonly run = signal<DemoRun | null>(null);
@@ -66,6 +68,10 @@ export class ConsolePage {
   protected readonly stageId = signal<string>('login');
   protected readonly tab = signal<'rejections' | 'log'>('rejections');
   protected readonly liveSvid = signal<LiveSvid | null>(null);
+  /** The same workload's JWT-SVID, decoded claims only (never a token). */
+  protected readonly liveJwt = signal<DemoToken | null>(null);
+  /** What the MCP server presented in a real mTLS handshake. */
+  protected readonly livePeer = signal<LiveSvid | null>(null);
   protected readonly liveUser = this.session.user;
   /** How deep the live chain went, so the diagram widens to the second hop
    *  only when the run actually delegated (M12/D-032). */
@@ -127,14 +133,28 @@ export class ConsolePage {
   protected select(id: string): void {
     this.stopPlay();
     this.stageId.set(id);
-    if (id === 'svid' && this.liveUser() !== null) {
+    if (this.liveUser() === null) {
+      return;
+    }
+    if (id === 'svid') {
       void this.loadSvid();
+      void this.loadJwt();
+    } else if (id === 'call') {
+      void this.loadPeer();
     }
   }
 
   /** Live only: the agent's current X.509-SVID chain, refetched on demand. */
   protected async loadSvid(): Promise<void> {
     this.liveSvid.set(await this.liveClient.svid());
+  }
+
+  private async loadJwt(): Promise<void> {
+    this.liveJwt.set(await this.identity.jwtSvid());
+  }
+
+  private async loadPeer(): Promise<void> {
+    this.livePeer.set(await this.identity.peer('mcp-server'));
   }
 
   private readonly stagePanel = viewChild<ElementRef<HTMLElement>>('stagePanel');

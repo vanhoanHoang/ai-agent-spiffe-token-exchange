@@ -16,6 +16,8 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +50,10 @@ import org.springframework.stereotype.Component;
 public class EjbcaEnrollment {
 
     private static final Pattern CERT_FIELD = Pattern.compile("\"certificate\"\\s*:\\s*\"([^\"]+)\"");
+    /** Present when the request says include_chain: an array of base64 DER
+     *  strings, issuers upward (probed live against 9.3.7, not recalled). */
+    private static final Pattern CHAIN_FIELD = Pattern.compile("\"certificate_chain\"\\s*:\\s*\\[([^\\]]*)\\]");
+    private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
 
     private final String enrollUrl;
     private final String caName;
@@ -150,7 +156,7 @@ public class EjbcaEnrollment {
      * it. The private key remains as absent as before.)
      */
     public record Issued(String subjectDn, String issuerDn, String serial, String notBefore, String notAfter,
-            String fingerprintSha256, String pem) {
+            String fingerprintSha256, String pem, List<String> chainPem) {
     }
 
     public Issued issue(String commonName) throws Exception {
@@ -184,7 +190,7 @@ public class EjbcaEnrollment {
         if (!m.find()) {
             throw new IllegalStateException("EJBCA response carries no certificate: " + response.body());
         }
-        return describe(m.group(1));
+        return describe(m.group(1), chainOf(response.body()));
     }
 
     private static KeyPair generateKeyPair() throws Exception {
@@ -213,13 +219,30 @@ public class EjbcaEnrollment {
                 "certificate_authority_name":"%s",\
                 "username":"%s",\
                 "password":"%s",\
-                "include_chain":false}"""
+                "include_chain":true}"""
                 .formatted(csrPem.replace("\r", "").replace("\n", "\\n"),
                         certificateProfile, endEntityProfile, caName,
                         enrollUsername + "-" + commonName, enrollPassword);
     }
 
-    private static Issued describe(String base64Der) throws Exception {
+    /** The CA chain EJBCA returned, as PEM, issuers upward; empty if absent. */
+    private static List<String> chainOf(String body) throws Exception {
+        List<String> chain = new ArrayList<>();
+        Matcher array = CHAIN_FIELD.matcher(body);
+        if (!array.find()) {
+            return chain;
+        }
+        Matcher entry = QUOTED.matcher(array.group(1));
+        while (entry.find()) {
+            byte[] der = Base64.getMimeDecoder().decode(entry.group(1));
+            X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509")
+                    .generateCertificate(new java.io.ByteArrayInputStream(der));
+            chain.add(pem(cert));
+        }
+        return chain;
+    }
+
+    private static Issued describe(String base64Der, List<String> chainPem) throws Exception {
         byte[] der = Base64.getMimeDecoder().decode(base64Der);
         X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509")
                 .generateCertificate(new java.io.ByteArrayInputStream(der));
@@ -236,7 +259,8 @@ public class EjbcaEnrollment {
                 cert.getNotBefore().toInstant().toString(),
                 cert.getNotAfter().toInstant().toString(),
                 hex.toString(),
-                pem(cert));
+                pem(cert),
+                chainPem);
     }
 
     /** The certificate, PEM-encoded — what `openssl x509 -text -in` reads. */

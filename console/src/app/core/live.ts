@@ -59,6 +59,8 @@ export interface LiveSvid {
  */
 export interface IssuedCert extends LiveCert {
   readonly pem: string;
+  /** Leaf first, trust anchor last, as the certificate service reported it. */
+  readonly chain?: readonly LiveCert[];
 }
 
 @Injectable({ providedIn: 'root' })

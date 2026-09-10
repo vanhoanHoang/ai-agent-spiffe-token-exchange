@@ -8,6 +8,9 @@ import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -57,7 +60,24 @@ public class IssuedApiController {
                 MessageDigest.getInstance("SHA-256").digest(cert.getEncoded())));
         m.put("details", X509Details.of(cert));
         m.put("pem", pem);
+        m.put("chain", chain(holder.chain()));
         return ResponseEntity.ok(m);
+    }
+
+    /**
+     * The certificate and its ancestry as cert-service reported them: leaf
+     * first, then issuers upward; a self-signed last certificate is the trust
+     * anchor. Same shape as /api/svid so the console draws one chain view.
+     */
+    private static List<Map<String, Object>> chain(List<String> pems) throws Exception {
+        List<Map<String, Object>> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (int i = 0; i < pems.size(); i++) {
+            X509Certificate cert = parse(pems.get(i));
+            boolean selfSigned = cert.getSubjectX500Principal().equals(cert.getIssuerX500Principal());
+            CertJson.add(out, seen, cert, i == 0 ? "leaf" : selfSigned ? "trust-anchor" : "intermediate");
+        }
+        return out;
     }
 
     /** The same bytes, as a file — what `openssl x509 -text -in` reads. */

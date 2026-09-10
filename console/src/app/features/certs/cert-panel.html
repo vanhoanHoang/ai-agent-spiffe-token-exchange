@@ -1,39 +1,13 @@
-<div class="panel">
-  <div class="bar">
-    <span>X.509-SVID · live certificate chain</span>
-    <button type="button" class="reload" (click)="reload.emit()">↻ refresh</button>
-  </div>
-  <div class="content">
-    <p class="id">{{ svid().spiffeId }}</p>
-    @if (rotation(); as r) {
-      <p class="rotation">
-        leaf expires in <strong>{{ r.expires }}</strong>
-        · rotation expected in <strong>{{ r.rotates }}</strong>
-        <span class="note">(estimate: SPIRE renews at about half of the 1h TTL)</span>
-      </p>
-    }
-    @for (c of svid().chain; track c.sha256) {
-      <div class="cert">
-        <span class="dot"></span>
-        <div class="role">{{ c.role }}</div>
-        <div class="name">{{ cn(c.subject) }}</div>
-        @for (uri of c.uriSans; track uri) {
-          <div class="detail">URI SAN: {{ uri }}</div>
-        }
-        <div class="detail">serial {{ c.serial }}</div>
-        <div class="detail">valid {{ c.notBefore }} → {{ c.notAfter }}</div>
-        <div class="detail muted">issued by {{ cn(c.issuer) }}</div>
-        <button type="button" class="expand" (click)="toggle(c.sha256)">
-          {{ expanded() === c.sha256 ? '▾ hide full certificate' : '▸ full certificate' }}
-        </button>
-        @if (expanded() === c.sha256) {
-          <dc-cert-detail [cert]="c" />
-        }
-      </div>
-    }
-    <p class="footnote">
-      Fetched live from the agent's Workload API. After a rotation the leaf's
-      serial and validity change. The SPIFFE ID and the chain above it do not.
-    </p>
-  </div>
-</div>
+@if (leaf(); as l) {
+  <dc-cert-card
+    [kicker]="kicker()"
+    [lead]="lead()"
+    [cert]="l"
+    [chain]="svid().chain"
+    [reloadable]="true"
+    (reload)="reload.emit()"
+  />
+}
+@if (jwt(); as t) {
+  <dc-token-card [token]="t" role="workload" kicker="JWT-SVID · workload only" [title]="svid().spiffeId" />
+}

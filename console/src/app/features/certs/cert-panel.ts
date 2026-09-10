@@ -9,27 +9,35 @@ import {
   signal,
 } from '@angular/core';
 
+import { DemoToken } from '../../core/demo-run';
 import { LiveSvid } from '../../core/live';
-import { CertDetail } from './cert-detail';
+import { TokenCard } from '../../shared/ui/token-card';
+import { CertCard } from './cert-card';
 import { countdown, rotationView } from './rotation';
 
-/** The agent's CURRENT X.509-SVID chain, straight from the Workload API via
- *  /api/svid — with an expert expander per certificate and a live countdown
- *  to the leaf's estimated rotation (SPIRE renews at ~half TTL). When the
- *  estimate comes due, the panel re-fetches on its own until the new leaf
- *  appears — rotation shows up without anyone touching the page. */
+function cn(dn: string): string {
+  const match = /CN=([^,]+)/.exec(dn);
+  return match === null ? dn : match[1];
+}
+
+/** The workload's two proofs, under the step that fetches them: the CURRENT
+ *  X.509-SVID as a certificate card (chain behind a disclosure, live countdown
+ *  to the leaf's estimated rotation in the lead) and the JWT-SVID as decoded
+ *  claims in the token card — the same SPIFFE ID in both, never a token.
+ *  When the rotation estimate comes due the panel re-fetches on its own until
+ *  the new leaf appears, so rotation shows up without anyone touching the page. */
 @Component({
   selector: 'dc-cert-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CertDetail],
+  imports: [CertCard, TokenCard],
   templateUrl: './cert-panel.html',
   styleUrl: './cert-panel.css',
 })
 export class CertPanel {
   readonly svid = input.required<LiveSvid>();
+  readonly jwt = input<DemoToken | null>(null);
   readonly reload = output<void>();
 
-  protected readonly expanded = signal<string | null>(null);
   private readonly now = signal(Date.now());
   private lastAutoReload = 0;
 
@@ -38,27 +46,27 @@ export class CertPanel {
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
-  protected readonly leaf = computed(() =>
-    this.svid().chain.find((c) => c.role === 'leaf'),
+  protected readonly leaf = computed(
+    () => this.svid().chain.find((c) => c.role === 'leaf') ?? this.svid().chain[0],
   );
 
-  protected readonly rotation = computed(() => {
+  protected readonly kicker = computed(() => {
     const l = this.leaf();
-    if (l === undefined) {
-      return null;
-    }
-    const v = rotationView(this.now(), l.notBefore, l.notAfter);
-    return { expires: countdown(v.expiresInMs), rotates: countdown(v.rotationInMs) };
+    return `X.509-SVID · ${l === undefined ? 'workload' : cn(l.subject)}`;
   });
 
-  protected toggle(sha: string): void {
-    this.expanded.update((cur) => (cur === sha ? null : sha));
-  }
-
-  protected cn(dn: string): string {
-    const match = /CN=([^,]+)/.exec(dn);
-    return match === null ? dn : match[1];
-  }
+  protected readonly lead = computed(() => {
+    const l = this.leaf();
+    const who = `Minted by SPIRE for ${this.svid().spiffeId}.`;
+    if (l === undefined) {
+      return who;
+    }
+    const v = rotationView(this.now(), l.notBefore, l.notAfter);
+    return (
+      `${who} Expires in ${countdown(v.expiresInMs)}, rotation expected in about ` +
+      `${countdown(v.rotationInMs)} (SPIRE renews at half the TTL); the SPIFFE ID never changes.`
+    );
+  });
 
   /** Once the estimated rotation is due, re-fetch every 30s; the new leaf's
    *  half-life resets the countdown and the polling stops by itself. */

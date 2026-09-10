@@ -3,7 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { LiveClient, LiveState } from '../../core/live';
+import { LiveIdentityClient } from '../../core/live-identity';
 import { demoRunFixture } from '../../core/testing/fixture';
+import { identityMock, ROOT_CERT } from '../../core/testing/live-identity-mock';
 import { ConsolePage } from './console-page';
 
 function mockFetch(body: unknown, ok = true): void {
@@ -22,6 +24,7 @@ async function renderPage(live: LiveState = 'offline') {
     imports: [ConsolePage],
     providers: [
       provideRouter([{ path: '**', children: [] }]),
+      { provide: LiveIdentityClient, useValue: identityMock() },
       {
         provide: LiveClient,
         useValue: {
@@ -40,6 +43,19 @@ async function renderPage(live: LiveState = 'offline') {
               uriSans: [],
               sha256: 'ab'.repeat(32),
               pem: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n',
+              chain: [
+                {
+                  role: 'leaf',
+                  subject: 'CN=john-laptop,O=eviden',
+                  issuer: 'CN=Eviden Issuing CA,O=eviden',
+                  serial: '4B2F9C11E07A35D8',
+                  notBefore: '2026-08-04T07:00:00Z',
+                  notAfter: '2028-08-03T07:00:00Z',
+                  uriSans: [],
+                  sha256: 'ab'.repeat(32),
+                },
+                ROOT_CERT,
+              ],
             }),
           // A two-hop chain, as the agent streams it (M12/D-032): one
           // svid+exchange pair per hop, each followed by its tool call.
@@ -89,8 +105,8 @@ describe('ConsolePage', () => {
     mockFetch(demoRunFixture());
     const fixture = await renderPage();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('h1')?.textContent).toContain('Two identities, one call');
-    expect(el.textContent).toContain('spiffe://ai-agent.id.eviden.internal');
+    expect(el.querySelector('dc-run-header')).toBeNull();
+    expect(el.textContent).not.toContain('Two identities, one call');
     expect(el.querySelectorAll('dc-step-rail').length).toBe(1);
     expect(el.querySelectorAll('dc-rejection-grid').length).toBe(1);
   });
@@ -188,18 +204,43 @@ describe('ConsolePage', () => {
     expect(el.querySelector('dc-live-chat')).toBeFalsy();
   });
 
-  it('live: opening the SVID stage shows the current certificate chain', async () => {
-    mockFetch(demoRunFixture());
-    const fixture = await renderPage({ username: 'alice', scopes: ['openid'] });
+  async function openStep(fixture: Awaited<ReturnType<typeof renderPage>>, title: string) {
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('dc-cert-panel')).toBeFalsy();
     Array.from(el.querySelectorAll<HTMLButtonElement>('.step'))
-      .find((b) => b.textContent?.includes('Agent fetches SVIDs'))
+      .find((b) => b.textContent?.includes(title))
       ?.click();
     await fixture.whenStable();
     await fixture.whenStable();
-    expect(el.querySelector('dc-cert-panel')?.textContent).toContain('serial ab12');
+    return el;
+  }
+
+  it('live: the SVID step shows the X.509-SVID card and the JWT-SVID claims card', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderPage({ username: 'alice', scopes: ['openid'] });
+    expect((fixture.nativeElement as HTMLElement).querySelector('dc-cert-panel')).toBeFalsy();
+    const el = await openStep(fixture, 'Agent fetches SVIDs');
+    const panel = el.querySelector('dc-cert-panel');
+    // The X.509 card: the openssl view of the leaf, in the shared card.
+    const x509 = panel?.querySelector('dc-cert-card');
+    expect(x509?.querySelector('.bar')?.textContent).toContain('X.509-SVID');
+    expect(x509?.querySelector('dc-cert-detail')?.textContent).toContain('ab12');
+    // The JWT card: decoded claims only — the existing token card, never a token.
+    const jwt = panel?.querySelector('dc-token-card');
+    expect(jwt?.textContent).toContain('JWT-SVID');
+    expect(jwt?.textContent).toContain('spiffe://ai-agent.id.eviden.internal/agent-client');
+    expect(jwt?.textContent).toContain('redacted');
     expect(el.querySelector('dc-custody-panel')).toBeFalsy();
+  });
+
+  it('live: the mTLS step shows the certificate the server presented', async () => {
+    mockFetch(demoRunFixture());
+    const fixture = await renderPage({ username: 'alice', scopes: ['openid'] });
+    const el = await openStep(fixture, 'mTLS MCP call');
+    const card = el.querySelector('dc-peer-cert dc-cert-card');
+    expect(card?.querySelector('.bar')?.textContent).toContain('Server certificate');
+    expect(card?.querySelector('.bar')?.textContent).toContain('mcp-server');
+    expect(card?.querySelector('dc-cert-detail')?.textContent).toContain('cd34');
+    expect(card?.querySelector('details.chain summary')?.textContent).toContain('chain (2)');
   });
 
   async function runLiveChain(fixture: Awaited<ReturnType<typeof renderPage>>) {
@@ -235,6 +276,8 @@ describe('ConsolePage', () => {
     const dl = panel?.querySelector<HTMLAnchorElement>('a.download');
     expect(dl?.getAttribute('href')).toBe('/api/issued/download');
     expect(dl?.getAttribute('download')).toBe('john-laptop.pem');
+    // The chain travels with it, in the same card.
+    expect(panel?.querySelector('details.chain summary')?.textContent).toContain('chain (2)');
     // A certificate is public; a key never is. Nothing key-shaped may appear.
     expect(panel?.textContent).not.toContain('PRIVATE KEY');
   });

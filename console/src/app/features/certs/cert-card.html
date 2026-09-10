@@ -1,0 +1,38 @@
+<section class="card">
+  <div class="bar">
+    <span class="kicker">{{ kicker() }}</span>
+    <span class="actions">
+      @if (reloadable()) {
+        <button type="button" class="reload" (click)="reload.emit()">↻ refresh</button>
+      }
+      @if (downloadHref(); as href) {
+        <a class="download" [href]="href" [attr.download]="downloadName()">Download .pem</a>
+      }
+    </span>
+  </div>
+  <p class="lead">{{ lead() }}</p>
+  <dc-cert-detail [cert]="cert()" />
+  @if (rows().length > 1) {
+    <details class="disclosure chain">
+      <summary>chain ({{ rows().length }})</summary>
+      <ol>
+        @for (r of rows(); track r.sha256) {
+          <li>
+            <span class="role">{{ r.role }}</span>
+            <span class="name">{{ r.name }}</span>
+            <span class="by">{{ r.by }}</span>
+            @if (r.note; as note) {
+              <span class="note">{{ note }}</span>
+            }
+          </li>
+        }
+      </ol>
+    </details>
+  }
+  @if (pem(); as p) {
+    <details class="disclosure pem">
+      <summary>PEM</summary>
+      <pre>{{ p }}</pre>
+    </details>
+  }
+</section>

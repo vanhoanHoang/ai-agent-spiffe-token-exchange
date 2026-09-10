@@ -1,19 +1,9 @@
-<div class="panel">
-  <div class="bar">
-    <span>Issued certificate · {{ commonName() }}</span>
-    <a class="download" href="/api/issued/download" [attr.download]="commonName() + '.pem'">Download .pem</a>
-  </div>
-
-  <p class="lead">
-    Signed by the corporate CA at the end of the chain. The private key was generated
-    for the request and discarded at issuance — it never left the certificate service,
-    so what you can take away is the certificate itself, which is public by design.
-  </p>
-
-  <dc-cert-detail [cert]="cert()" />
-
-  <details class="pem">
-    <summary>PEM</summary>
-    <pre>{{ cert().pem }}</pre>
-  </details>
-</div>
+<dc-cert-card
+  [kicker]="kicker()"
+  [lead]="lead"
+  [cert]="cert()"
+  [chain]="chain()"
+  [pem]="cert().pem"
+  downloadHref="/api/issued/download"
+  [downloadName]="fileName()"
+/>

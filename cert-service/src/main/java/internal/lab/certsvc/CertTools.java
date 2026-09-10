@@ -1,5 +1,6 @@
 package internal.lab.certsvc;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,20 +60,24 @@ public class CertTools {
                     cn, issued.serial(), jwt.getSubject(), chain);
             auditLog.record("issued cn=%s serial=%s sub=%s chain=%s"
                     .formatted(cn, issued.serial(), jwt.getSubject(), chain));
-            return Map.of(
-                    "issued", true,
-                    "subject_dn", issued.subjectDn(),
-                    "issuer_dn", issued.issuerDn(),
-                    "serial", issued.serial(),
-                    "not_before", issued.notBefore(),
-                    "not_after", issued.notAfter(),
-                    "fingerprint_sha256", issued.fingerprintSha256(),
-                    "requested_by_human", String.valueOf(jwt.getSubject()),
-                    "delegation_chain", chain,
-                    // The certificate itself, so the human who asked for it can
-                    // actually see and keep it. Public material: the key that
-                    // would make it usable was discarded at issuance.
-                    "certificate_pem", issued.pem());
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("issued", true);
+            out.put("subject_dn", issued.subjectDn());
+            out.put("issuer_dn", issued.issuerDn());
+            out.put("serial", issued.serial());
+            out.put("not_before", issued.notBefore());
+            out.put("not_after", issued.notAfter());
+            out.put("fingerprint_sha256", issued.fingerprintSha256());
+            out.put("requested_by_human", String.valueOf(jwt.getSubject()));
+            out.put("delegation_chain", chain);
+            // The certificate itself, so the human who asked for it can
+            // actually see and keep it. Public material: the key that
+            // would make it usable was discarded at issuance.
+            out.put("certificate_pem", issued.pem());
+            // Its ancestry, issuers upward to the corporate root — public too,
+            // and what lets the console draw the chain of custody.
+            out.put("chain_pem", issued.chainPem());
+            return out;
         } catch (Exception e) {
             // No fallback issuance. A failure here is reported as a failure.
             log.error("tool=issue_employee_cert FAILED cn={} sub={} chain={}", cn, jwt.getSubject(), chain, e);
