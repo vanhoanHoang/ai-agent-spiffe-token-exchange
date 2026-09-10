@@ -123,6 +123,9 @@ services:
       context: ..                              # repo root: the image also builds the console (D-024)
       dockerfile: agent-client/Dockerfile
     image: spiffe-mcp-lab-agent-client
+    pull_policy: never                         # built here or imported from USB, never on a registry: without this,
+                                               # compose tries a registry first and prints a scary (harmless)
+                                               # "pull access denied ... may require 'docker login'" on every up
     command: ["web"]
     labels:
       org.lab.workload: agent-client
