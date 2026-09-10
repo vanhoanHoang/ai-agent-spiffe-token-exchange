@@ -8,6 +8,56 @@ preflight in `demo/up.sh --check` tests all of them and prints the fix itself.
 Time budget on a laptop with the images imported from USB: about 25 minutes
 (EJBCA's first initialisation is most of it). With images built from source: add 10–15 minutes and a working internet connection.
 
+## Company laptop, Docker already installed, hosts line added by you
+
+Everything below is PowerShell as your normal user, no admin. Copy block by block.
+
+**1. Code + machine prep** (`.wslconfig`, `infra\.env` with the Groq key via Notepad, WSL restart):
+
+```powershell
+cd "C:\Research Engineer\Eviden\AI\ai-agent-spiffe-token-exchange"
+git pull
+powershell -ExecutionPolicy Bypass -File demo\prepare-windows.ps1
+```
+
+When Notepad opens: replace `<paste your gsk_ key here>` with the key from
+console.groq.com/keys, Save, close Notepad. When the script prints NEXT: open
+Docker Desktop, wait for "Engine running".
+
+**2. One-time CA hierarchy** (~10 min, mostly EJBCA):
+
+```powershell
+demo\setup-once.cmd
+```
+
+**3. Check, then launch** (first launch builds the images, ~15 min with internet):
+
+```powershell
+demo\up.cmd --check
+demo\up.cmd
+```
+
+Every `--check` line must be `OK`; a `FAIL` line tells you the fix. The last line
+of `demo\up.cmd` must be `CHECKLIST PASS — go on stage`.
+
+**4. Try it once before the audience:** http://localhost:8090, `alice` /
+`alice-password`, then these two prompts:
+
+```
+Use the whoami tool and tell me who you act for
+Onboard employee john-laptop
+```
+
+**5. Morning of the demo, after the laptop slept:**
+
+```powershell
+demo\checklist.cmd
+```
+
+If it reports clock skew: `wsl --shutdown`, open Docker Desktop again, then `demo\reset.cmd --soft`.
+
+---
+
 ## The whole thing, to paste
 
 **Needs admin (IT), no way around it:** installing Docker Desktop with the WSL2
