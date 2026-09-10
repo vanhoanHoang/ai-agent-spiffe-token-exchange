@@ -8,6 +8,48 @@ preflight in `demo/up.sh --check` tests all of them and prints the fix itself.
 Time budget on a laptop with the images imported from USB: about 25 minutes
 (EJBCA's first initialisation is most of it). With images built from source: add 10–15 minutes and a working internet connection.
 
+## The whole thing, to paste
+
+**Needs admin (IT), no way around it:** installing Docker Desktop with the WSL2
+backend, and one line in the hosts file. Everything else is per-user. Ask IT for
+exactly these two things, in this wording:
+
+```
+1. Install Docker Desktop (WSL2 backend) and let my user run it.
+2. Add this line to C:\Windows\System32\drivers\etc\hosts:   127.0.0.1 keycloak
+```
+
+Git for Windows installs per-user without admin (installer: "Install for me only"),
+or use the portable build from git-scm.com.
+
+Then PowerShell, as your normal user. Change `E:\spiffe-lab` to the USB folder, or
+drop `-Images ...` to build from source (needs internet, +15 min):
+
+```powershell
+git clone https://github.com/vanhoanHoang/ai-agent-spiffe-token-exchange.git C:\lab\spiffe-mcp-lab
+cd C:\lab\spiffe-mcp-lab
+powershell -ExecutionPolicy Bypass -File demo\prepare-windows.ps1 -Images E:\spiffe-lab
+```
+
+`prepare-windows.ps1` does, by itself and without admin: `.wslconfig` (Docker
+memory 6 GB), `infra\.env` from the template (Notepad opens, paste the Groq key,
+save), image import from the USB folder, WSL restart. It tries the hosts line and,
+if it cannot, prints it for IT. When it says NEXT, open Docker Desktop, wait for
+"Engine running", then:
+
+```powershell
+demo\setup-once.cmd     # one-time CA hierarchy, ~10 min (EJBCA)
+demo\up.cmd --check     # every line OK, or a fix line
+demo\up.cmd             # launch; last line must be CHECKLIST PASS
+```
+
+Then http://localhost:8090, alice / alice-password, and the two demo prompts once:
+"Use the whoami tool and tell me who you act for", then "Onboard employee john-laptop".
+
+Morning of the demo, after the laptop slept: `demo\checklist.cmd`.
+
+The sections below are the same steps, explained, plus every Windows failure seen and its fix.
+
 ## 0. On the OLD machine, before you leave
 
 ```bash
