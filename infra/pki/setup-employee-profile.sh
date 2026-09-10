@@ -47,11 +47,25 @@ if [ "$FORCE" != "--force" ] && [ -f ra/ra-cert-service.p12 ] && [ -f ra/ejbca-t
   mine=$(openssl x509 -in ra/ejbca-tls-ca.pem -noout -fingerprint -sha256)
   if [ "$live" != "$mine" ]; then
     say "RA credential present but pki/ra/ejbca-tls-ca.pem is NOT the ManagementCA of the running EJBCA — re-creating"
-  elif ! openssl pkcs12 -in ra/ra-cert-service.p12 -passin "pass:$RAPW" -nokeys 2>/dev/null \
+  elif ! openssl pkcs12 -in ra/ra-cert-service.p12 -passin "pass:$RAPW" -clcerts -nokeys 2>/dev/null \
          | openssl verify -CAfile ra/ejbca-tls-ca.pem >/dev/null 2>&1; then
     say "RA credential present but ra-cert-service.p12 was not issued by the running ManagementCA (or expired) — re-creating"
   else
-    say "RA credential present and accepted by the running EJBCA — nothing to do (use --force to re-create)"; exit 0
+    # Chain-valid is not accepted. On the company laptop a P12 that passed both
+    # checks above was still refused by EJBCA at the TLS layer (closed
+    # connection, root cause not established); a forced re-issue fixed it. So
+    # the early exit needs EJBCA's own verdict: the REST status call over mTLS
+    # with this P12, exactly what cert-service does. Wait for 8443 first.
+    for i in $(seq 1 30); do
+      echo | openssl s_client -connect localhost:8444 2>/dev/null | grep -q "BEGIN CERTIFICATE" && break; sleep 5
+    done
+    code=$(MSYS_NO_PATHCONV=1 curl -s -o /dev/null --max-time 15 --cert-type P12 --cert "ra/ra-cert-service.p12:$RAPW" \
+             --cacert ra/ejbca-tls-ca.pem --resolve ejbca:8444:127.0.0.1 -w '%{http_code}' \
+             https://ejbca:8444/ejbca/ejbca-rest-api/v1/certificate/status 2>/dev/null || true)
+    if [ "$code" = 200 ]; then
+      say "RA credential present and ACCEPTED by the running EJBCA (REST status 200 over mTLS) — nothing to do (use --force to re-create)"; exit 0
+    fi
+    say "RA credential present and chain-valid, but EJBCA refuses it over mTLS (HTTP '${code:-none}') — re-creating"
   fi
 fi
 
