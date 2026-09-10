@@ -1,0 +1,777 @@
+<title>Agent Identity Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f5f6f8; --sheet: #ffffff; --ink: #1a1d23; --ink-2: #5c626e; --ink-3: #8a909c;
+    --line: #d3d7df; --line-soft: #e4e7ec; --tint: #f0f2f5;
+    --human: #35618e; --human-soft: #e3ecf5;
+    --workload: #1f7a70; --workload-soft: #e7f2ef;
+    --bridge: #c2551f; --bridge-soft: #f8e6dc;
+    --pki: #8a6a2f; --pki-soft: #f3ecdc;
+    --deny: #b3362a; --deny-soft: #f6e2df;
+    --ok: #2e7d4f;
+    --font: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1218; --sheet: #171c26; --ink: #e6e9ef; --ink-2: #aab1bd; --ink-3: #7c8492;
+      --line: #3a4150; --line-soft: #2a303c; --tint: #1f2530;
+      --human: #7fa8d3; --human-soft: #1c2a3a;
+      --workload: #5fc2b3; --workload-soft: #17302c;
+      --bridge: #ee8a5a; --bridge-soft: #3a2418;
+      --pki: #d0aa62; --pki-soft: #332a18;
+      --deny: #e57a6c; --deny-soft: #3a1f1c;
+      --ok: #7dd3a8;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1218; --sheet: #171c26; --ink: #e6e9ef; --ink-2: #aab1bd; --ink-3: #7c8492;
+    --line: #3a4150; --line-soft: #2a303c; --tint: #1f2530;
+    --human: #7fa8d3; --human-soft: #1c2a3a;
+    --workload: #5fc2b3; --workload-soft: #17302c;
+    --bridge: #ee8a5a; --bridge-soft: #3a2418;
+    --pki: #d0aa62; --pki-soft: #332a18;
+    --deny: #e57a6c; --deny-soft: #3a1f1c;
+    --ok: #7dd3a8;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45;
+         padding-inline: 24px; padding-block: 32px 64px; margin: 0; }
+  header.doc { max-width: 1600px; margin: 0 auto 28px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; }
+  header.doc h1 { font-size: 26px; font-weight: 600; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  header.doc .td { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  header.doc p { flex-basis: 100%; margin: 0; max-width: 72ch; color: var(--ink-2); }
+  nav.sheets { max-width: 1600px; margin: 0 auto 24px; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav.sheets a { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); text-decoration: none; border: 1px solid var(--line);
+                 padding: 5px 10px; background: var(--sheet); }
+  nav.sheets a:hover, nav.sheets a:focus-visible { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  section.sheet { max-width: 1600px; margin: 0 auto 40px; background: var(--sheet); border: 1px solid var(--line); overflow-x: auto; }
+  .frame { width: 1600px; height: 900px; position: relative; }
+  .frame > svg { display: block; width: 1600px; height: 900px; }
+  figure { margin: 0; }
+  figcaption { padding: 14px 20px 18px; color: var(--ink-2); font-size: 14px; max-width: 110ch; border-top: 1px solid var(--line-soft); }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* SVG vocabulary: one class per meaning, colours only ever say WHICH identity or plane */
+  svg text { font-family: var(--font); font-size: 15px; fill: var(--ink); }
+  svg .t-title { font-size: 22px; font-weight: 600; }
+  svg .t-sub { font-size: 14px; fill: var(--ink-2); }
+  svg .t-mono { font-family: var(--mono); font-size: 13px; fill: var(--ink-2); }
+  svg .t-mono-ink { font-family: var(--mono); font-size: 13px; fill: var(--ink); }
+  svg .t-lbl { font-size: 13.5px; fill: var(--ink-2); }
+  svg .t-head { font-weight: 600; font-size: 16px; }
+  svg .t-small { font-size: 12px; fill: var(--ink-3); }
+  svg .t-kick { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; fill: var(--ink-3); }
+  svg .box { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.5; }
+  svg .box-soft { fill: var(--tint); stroke: var(--line); stroke-width: 1; }
+  svg .box-human { fill: var(--human-soft); stroke: var(--human); stroke-width: 1.5; }
+  svg .box-workload { fill: var(--workload-soft); stroke: var(--workload); stroke-width: 1.5; }
+  svg .box-pki { fill: var(--pki-soft); stroke: var(--pki); stroke-width: 1.5; }
+  svg .box-bridge { fill: var(--bridge-soft); stroke: var(--bridge); stroke-width: 1.5; }
+  svg .box-deny { fill: var(--deny-soft); stroke: var(--deny); stroke-width: 1.5; }
+  svg .ln { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+  svg .ln-human { fill: none; stroke: var(--human); stroke-width: 2; }
+  svg .ln-workload { fill: none; stroke: var(--workload); stroke-width: 2; }
+  svg .ln-bridge { fill: none; stroke: var(--bridge); stroke-width: 2.5; }
+  svg .ln-pki { fill: none; stroke: var(--pki); stroke-width: 2; }
+  svg .ln-deny { fill: none; stroke: var(--deny); stroke-width: 2; stroke-dasharray: 7 5; }
+  svg .ln-keys { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 3 5; }
+  svg .ln-soft { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+  svg .ln-life { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 4 6; }
+  svg .badge { fill: var(--workload-soft); stroke: var(--workload); stroke-width: 1; }
+  svg .t-badge { font-family: var(--mono); font-size: 11px; fill: var(--workload); }
+  svg .t-human { fill: var(--human); } svg .t-workload { fill: var(--workload); } svg .t-bridge { fill: var(--bridge); }
+  svg .t-pki { fill: var(--pki); } svg .t-deny { fill: var(--deny); } svg .t-ok { fill: var(--ok); }
+  svg .num { fill: var(--ink); } svg .t-num { fill: var(--sheet); font-size: 12px; font-weight: 600; }
+  svg .tb { fill: none; stroke: var(--line); stroke-width: 1; }
+  svg .step { fill: var(--sheet); stroke: var(--line); stroke-width: 1; }
+  svg .head-band { fill: var(--tint); }
+
+  /* the trust-root matrix (sheet 4) is a table on the sheet, set in the same vocabulary */
+  table.roots { border-collapse: collapse; width: 1520px; margin: 0 40px; font-size: 14.5px; }
+  table.roots th, table.roots td { text-align: left; vertical-align: top; padding: 12px 14px; border-top: 1px solid var(--line); }
+  table.roots th { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--ink-3); border-top: 0; padding-top: 0; }
+  table.roots td:first-child { font-weight: 600; white-space: nowrap; }
+  table.roots td:first-child span { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 1.5px solid; }
+  table.roots code { font-family: var(--mono); font-size: 13px; }
+  table.roots td.not { color: var(--deny); }
+  .sheet-head { padding: 26px 40px 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+  .sheet-head h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .sheet-head .no { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  .foot { padding: 10px 40px 0; color: var(--ink-3); font-size: 12.5px; }
+
+  body.export { padding: 0; background: var(--sheet); }
+  body.export header.doc, body.export nav.sheets, body.export figcaption { display: none; }
+  body.export section.sheet { margin: 0; border: 0; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<header class="doc">
+  <h1>Agent Identity Architecture</h1>
+  <span class="td">spiffe://ai-agent.id.eviden.internal</span>
+  <p>Six sheets, one rule: SPIFFE answers <b>which workload</b>, OIDC answers <b>on behalf of which human</b>, and the only bridge between them is RFC 8693 token exchange. Colour on every sheet says which identity a value belongs to; it is never decorative.</p>
+</header>
+<nav class="sheets">
+  <a href="#s1">1 · Topology</a><a href="#s2">2 · Single hop</a><a href="#s3">3 · Delegation chain</a>
+  <a href="#s4">4 · Validation roots</a><a href="#s5">5 · PKI custody</a><a href="#s6">6 · Deployment</a>
+</nav>
+
+<!-- ============================ SHEET 1 : TOPOLOGY ============================ -->
+<section class="sheet" id="s1">
+<figure>
+<div class="frame">
+<svg viewBox="0 0 1600 900" role="img" aria-label="System topology: a human, a browser console hosted by agent-web, Keycloak as authorization server, an MCP resource server, a second-hop PKI agent, a certificate service, EJBCA, and SPIRE, with every link coloured by the identity plane it carries.">
+  <defs>
+    <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker>
+    <marker id="a-human" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--human)"/></marker>
+    <marker id="a-workload" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--workload)"/></marker>
+    <marker id="a-bridge" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--bridge)"/></marker>
+    <marker id="a-pki" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--pki)"/></marker>
+    <marker id="a-deny" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--deny)"/></marker>
+    <marker id="a-keys" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink-3)"/></marker>
+    <marker id="a-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink-3)"/></marker>
+  </defs>
+
+  <!-- sheet title -->
+  <text x="40" y="52" class="t-title">1 · Topology and trust planes</text>
+  <text x="40" y="76" class="t-sub">Every component that holds an identity, and which plane each link belongs to</text>
+
+  <!-- title block, top right -->
+  <g>
+    <rect x="1180" y="28" width="380" height="88" class="tb"/>
+    <line x1="1180" y1="56" x2="1560" y2="56" class="tb"/>
+    <text x="1192" y="47" class="t-kick">TRUST DOMAIN</text>
+    <text x="1192" y="80" class="t-mono-ink">spiffe://ai-agent.id.eviden.internal</text>
+    <text x="1192" y="104" class="t-small">Keycloak 26.6 · SPIRE 1.15 · EJBCA · Spring Boot 4.1 · Sheet 1 of 6</text>
+  </g>
+
+  <!-- legend -->
+  <g transform="translate(1230 706)">
+    <line x1="0" y1="0" x2="34" y2="0" class="ln-human"/><text x="44" y="5" class="t-lbl">User identity (OIDC, PKCE, consent)</text>
+    <line x1="0" y1="24" x2="34" y2="24" class="ln-workload"/><text x="44" y="29" class="t-lbl">Workload identity (SPIFFE, SVID mTLS)</text>
+    <line x1="0" y1="48" x2="34" y2="48" class="ln-bridge"/><text x="44" y="53" class="t-lbl">The bridge: RFC 8693, jwt-spiffe client auth</text>
+    <line x1="0" y1="72" x2="34" y2="72" class="ln-pki"/><text x="44" y="77" class="t-lbl">PKI plane (EJBCA, name-constrained CA, RA)</text>
+    <line x1="0" y1="96" x2="34" y2="96" class="ln-keys"/><text x="44" y="101" class="t-lbl">Key discovery (JWKS, bundle endpoint)</text>
+    <line x1="0" y1="120" x2="34" y2="120" class="ln-deny"/><text x="44" y="125" class="t-lbl">Refused by the delegation table</text>
+    <rect x="0" y="136" width="34" height="16" rx="3" class="badge"/><text x="44" y="148" class="t-lbl">Holds an X509-SVID and a JWT-SVID</text>
+  </g>
+
+  <!-- ===== boxes ===== -->
+  <!-- Human -->
+  <rect x="60" y="380" width="180" height="110" class="box-human"/>
+  <text x="76" y="410" class="t-head t-human">Human · alice</text>
+  <text x="76" y="434" class="t-lbl">browser</text>
+  <text x="76" y="454" class="t-lbl">logs in, grants consent,</text>
+  <text x="76" y="472" class="t-lbl">chats with the agent</text>
+
+  <!-- LLM -->
+  <rect x="330" y="130" width="260" height="100" class="box-soft"/>
+  <text x="346" y="158" class="t-head">LLM · deployment detail</text>
+  <text x="346" y="182" class="t-lbl">Ollama, local, no credential</text>
+  <text x="346" y="200" class="t-lbl">or Groq, hosted, key in env only</text>
+  <text x="346" y="220" class="t-small">selected by LLM_PROVIDER, never by code</text>
+
+  <!-- agent-web -->
+  <rect x="330" y="340" width="260" height="190" class="box"/>
+  <text x="346" y="368" class="t-head">agent-web  :8090</text>
+  <text x="346" y="392" class="t-lbl">Angular console (served in-image)</text>
+  <line x1="346" y1="404" x2="574" y2="404" class="tb"/>
+  <text x="346" y="426" class="t-head">agent-client</text>
+  <text x="346" y="446" class="t-lbl">agentic loop: ChatClient + MCP tools</text>
+  <text x="346" y="466" class="t-lbl">SVID → exchange → MCP call</text>
+  <text x="346" y="490" class="t-mono">spiffe://…/agent-client</text>
+  <rect x="524" y="348" width="58" height="16" rx="3" class="badge"/><text x="530" y="360" class="t-badge">SVIDs</text>
+
+  <!-- Keycloak -->
+  <rect x="700" y="80" width="300" height="150" class="box"/>
+  <text x="716" y="108" class="t-head">Keycloak 26.6  :8080</text>
+  <text x="716" y="130" class="t-lbl">Authorization server · realm ai-agents</text>
+  <text x="716" y="150" class="t-lbl">RFC 8693 token exchange</text>
+  <text x="716" y="170" class="t-lbl">jwt-spiffe client authenticator (SPI)</text>
+  <text x="716" y="190" class="t-lbl">act mapper · scope-intersection executor</text>
+  <text x="716" y="210" class="t-lbl">delegation-table executor</text>
+
+  <!-- mcp-server -->
+  <rect x="1120" y="340" width="300" height="150" class="box"/>
+  <text x="1136" y="368" class="t-head">mcp-server  :8443</text>
+  <text x="1136" y="392" class="t-lbl">Spring Boot resource server</text>
+  <text x="1136" y="412" class="t-lbl">tools: whoami, read_audit_log</text>
+  <text x="1136" y="436" class="t-lbl">gates: peer allow-list · JWKS signature</text>
+  <text x="1136" y="456" class="t-lbl">aud == self · act.sub == peer · scope ∩</text>
+  <text x="1136" y="478" class="t-mono">logs sub + act.sub on every call</text>
+  <rect x="1354" y="348" width="58" height="16" rx="3" class="badge"/><text x="1360" y="360" class="t-badge">SVIDs</text>
+
+  <!-- agent-pki -->
+  <rect x="700" y="560" width="260" height="120" class="box"/>
+  <text x="716" y="588" class="t-head">agent-pki</text>
+  <text x="716" y="610" class="t-lbl">second hop · deterministic, no LLM</text>
+  <text x="716" y="630" class="t-lbl">tool: onboard_employee</text>
+  <text x="716" y="654" class="t-mono">spiffe://…/agent-pki</text>
+  <rect x="894" y="568" width="58" height="16" rx="3" class="badge"/><text x="900" y="580" class="t-badge">SVIDs</text>
+
+  <!-- cert-service -->
+  <rect x="1120" y="560" width="340" height="120" class="box"/>
+  <text x="1136" y="588" class="t-head">cert-service</text>
+  <text x="1136" y="610" class="t-lbl">issuance resource server · same gate stack</text>
+  <text x="1136" y="630" class="t-lbl">tool: issue_employee_cert(subject)</text>
+  <text x="1136" y="654" class="t-lbl">registered RA  ra-cert-service</text>
+  <rect x="1394" y="568" width="58" height="16" rx="3" class="badge"/><text x="1400" y="580" class="t-badge">SVIDs</text>
+
+  <!-- SPIRE -->
+  <rect x="60" y="700" width="240" height="140" class="box-workload"/>
+  <text x="76" y="728" class="t-head t-workload">SPIRE 1.15</text>
+  <text x="76" y="750" class="t-lbl">server + agent</text>
+  <text x="76" y="770" class="t-lbl">docker workload attestation</text>
+  <text x="76" y="790" class="t-lbl">Workload API on a unix socket,</text>
+  <text x="76" y="808" class="t-lbl">mounted into every workload</text>
+  <text x="76" y="830" class="t-small">no host port</text>
+
+  <!-- EJBCA -->
+  <rect x="420" y="760" width="280" height="90" class="box-pki"/>
+  <text x="436" y="788" class="t-head t-pki">EJBCA  :8444</text>
+  <text x="436" y="810" class="t-lbl">Root CA · name-constrained intermediate</text>
+  <text x="436" y="830" class="t-lbl">employee profiles · ManagementCA (RA plane)</text>
+
+  <!-- ===== links ===== -->
+  <!-- human -> keycloak : login -->
+  <polyline points="150,380 150,262 760,262 760,232" class="ln-human" marker-end="url(#a-human)"/>
+  <text x="300" y="254" class="t-lbl t-human">OIDC login: authorization code + PKCE, consent screen</text>
+  <!-- human -> agent-web : chat -->
+  <line x1="240" y1="435" x2="328" y2="435" class="ln-human" marker-end="url(#a-human)"/>
+  <text x="248" y="427" class="t-small">chat</text>
+  <!-- agent-web -> llm -->
+  <line x1="460" y1="340" x2="460" y2="232" class="ln-soft" marker-end="url(#a-soft)" marker-start="url(#a-soft)"/>
+  <text x="472" y="290" class="t-small">prompt, tool choice</text>
+  <text x="472" y="306" class="t-small">the model picks WHAT, never WHO</text>
+  <!-- agent-web -> keycloak : exchange -->
+  <polyline points="590,380 850,380 850,232" class="ln-bridge" marker-end="url(#a-bridge)"/>
+  <text x="600" y="371" class="t-lbl t-bridge">RFC 8693 exchange, client auth = JWT-SVID</text>
+  <!-- agent-web -> mcp-server -->
+  <line x1="590" y1="420" x2="1118" y2="420" class="ln-workload" marker-end="url(#a-workload)"/>
+  <text x="920" y="411" class="t-lbl t-workload">mTLS with X509-SVIDs</text>
+  <text x="920" y="440" class="t-mono">bearer aud=mcp-server</text>
+  <!-- agent-web -> agent-pki -->
+  <polyline points="590,500 830,500 830,558" class="ln-workload" marker-end="url(#a-workload)"/>
+  <text x="600" y="491" class="t-lbl t-workload">MCP over SVID mTLS, hop-1 token</text>
+  <text x="600" y="520" class="t-mono">aud=agent-pki</text>
+  <text x="600" y="538" class="t-mono">scope=onboard:initiate</text>
+  <!-- agent-pki -> keycloak : exchange 2 -->
+  <line x1="900" y1="560" x2="900" y2="232" class="ln-bridge" marker-end="url(#a-bridge)"/>
+  <text x="912" y="300" class="t-lbl t-bridge">exchange again, hop 2</text>
+  <text x="912" y="318" class="t-small">table gates audience ∧ scope ∧ depth</text>
+  <!-- agent-pki -> cert-service -->
+  <line x1="960" y1="620" x2="1118" y2="620" class="ln-workload" marker-end="url(#a-workload)"/>
+  <text x="970" y="611" class="t-mono t-workload">hop-2 token</text>
+  <text x="970" y="640" class="t-mono">aud=cert-service</text>
+  <!-- cert-service -> EJBCA -->
+  <polyline points="1150,680 1150,805 702,805" class="ln-pki" marker-end="url(#a-pki)"/>
+  <text x="720" y="828" class="t-lbl t-pki">RA mTLS on the ManagementCA plane · enroll employee certificate</text>
+  <!-- EJBCA -> SPIRE : upstream -->
+  <line x1="420" y1="780" x2="302" y2="780" class="ln-pki" marker-end="url(#a-pki)"/>
+  <text x="308" y="770" class="t-small t-pki">upstream CA</text>
+  <!-- SPIRE -> agent-web : workload api -->
+  <polyline points="300,720 460,720 460,532" class="ln-workload" marker-end="url(#a-workload)"/>
+  <text x="472" y="600" class="t-lbl t-workload">Workload API</text>
+  <text x="472" y="618" class="t-small">X509-SVID + JWT-SVID, rotated</text>
+  <!-- SPIRE -> Keycloak : bundle endpoint -->
+  <polyline points="280,700 280,100 698,100" class="ln-keys" marker-end="url(#a-keys)"/>
+  <text x="300" y="92" class="t-small">SPIFFE bundle endpoint (https_web), configured out of band</text>
+  <!-- Keycloak -> mcp-server, cert-service : JWKS -->
+  <polyline points="1000,150 1270,150 1270,338" class="ln-keys" marker-end="url(#a-keys)"/>
+  <polyline points="1000,190 1480,190 1480,558" class="ln-keys" marker-end="url(#a-keys)"/>
+  <text x="1010" y="142" class="t-small">realm JWKS</text>
+  <!-- agent-web x cert-service -->
+  <polyline points="520,530 520,720 1200,720 1200,682" class="ln-deny" marker-end="url(#a-deny)"/>
+  <text x="640" y="712" class="t-lbl t-deny">refused: agent-client is not on the table for cert-service (audience, scope, depth all fail)</text>
+</svg>
+</div>
+<figcaption><b>What the sheet shows.</b> Two identities coexist and never substitute for each other: the human's (blue) and the workload's (teal). They meet in exactly one place, the orange exchange at Keycloak, where a JWT-SVID authenticates the client and the human's token is re-issued with an <code>act</code> claim. Everything the human can do downstream is bounded by that exchange; everything a workload is trusted for comes from SPIRE, whose CA is itself chained to EJBCA. The LLM sits outside all three planes.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ SHEET 2 : SINGLE HOP ============================ -->
+<section class="sheet" id="s2">
+<figure>
+<div class="frame">
+<svg viewBox="0 0 1600 900" role="img" aria-label="Sequence of the single hop: login, SVID fetch, token exchange authenticated with a JWT-SVID, key discovery from the SPIFFE bundle endpoint, then an mTLS call to the MCP server carrying the exchanged token, and the server's ordered gate stack.">
+  <defs>
+    <marker id="b-human" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--human)"/></marker>
+    <marker id="b-workload" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--workload)"/></marker>
+    <marker id="b-bridge" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--bridge)"/></marker>
+    <marker id="b-keys" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink-3)"/></marker>
+    <marker id="b-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink)"/></marker>
+  </defs>
+  <text x="40" y="52" class="t-title">2 · The single hop: from a login to an authorised MCP call</text>
+  <text x="40" y="76" class="t-sub">What actually crosses the wire, in order, and what the resource server checks before it answers</text>
+
+  <!-- lifeline heads: x = 130, 370, 610, 850, 1090 -->
+  <g>
+    <rect x="50" y="110" width="160" height="50" class="box-human"/><text x="130" y="141" text-anchor="middle" class="t-head t-human">alice (browser)</text>
+    <rect x="290" y="110" width="160" height="50" class="box"/><text x="370" y="141" text-anchor="middle" class="t-head">agent-client</text>
+    <rect x="530" y="110" width="160" height="50" class="box-workload"/><text x="610" y="141" text-anchor="middle" class="t-head t-workload">SPIRE agent</text>
+    <rect x="770" y="110" width="160" height="50" class="box"/><text x="850" y="141" text-anchor="middle" class="t-head">Keycloak</text>
+    <rect x="1010" y="110" width="160" height="50" class="box"/><text x="1090" y="141" text-anchor="middle" class="t-head">mcp-server</text>
+    <line x1="130" y1="160" x2="130" y2="840" class="ln-life"/>
+    <line x1="370" y1="160" x2="370" y2="840" class="ln-life"/>
+    <line x1="610" y1="160" x2="610" y2="840" class="ln-life"/>
+    <line x1="850" y1="160" x2="850" y2="840" class="ln-life"/>
+    <line x1="1090" y1="160" x2="1090" y2="840" class="ln-life"/>
+  </g>
+
+  <!-- 1 login -->
+  <circle cx="24" cy="205" r="11" class="num"/><text x="24" y="209" text-anchor="middle" class="t-num">1</text>
+  <line x1="130" y1="205" x2="848" y2="205" class="ln-human" marker-end="url(#b-human)"/>
+  <text x="150" y="196" class="t-lbl t-human">authorization code + PKCE, public client demo-web, consent: openid profile (+ task scopes on demand)</text>
+  <line x1="850" y1="240" x2="132" y2="240" class="ln-human" marker-end="url(#b-human)"/>
+  <text x="150" y="262" class="t-mono">user token  sub=alice  aud=agent-client  scope=what alice ticked</text>
+  <text x="150" y="280" class="t-small">held server-side in agent-web's session; the browser only gets a cookie</text>
+
+  <!-- 2 svid -->
+  <circle cx="24" cy="325" r="11" class="num"/><text x="24" y="329" text-anchor="middle" class="t-num">2</text>
+  <line x1="370" y1="325" x2="608" y2="325" class="ln-workload" marker-end="url(#b-workload)"/>
+  <text x="390" y="316" class="t-lbl t-workload">Workload API (unix socket): attest by docker label</text>
+  <line x1="610" y1="356" x2="372" y2="356" class="ln-workload" marker-end="url(#b-workload)"/>
+  <text x="390" y="378" class="t-mono">X509-SVID (URI SAN spiffe://…/agent-client) + JWT-SVID, aud = AS issuer identifier</text>
+
+  <!-- 3 exchange -->
+  <circle cx="24" cy="430" r="11" class="num"/><text x="24" y="434" text-anchor="middle" class="t-num">3</text>
+  <line x1="370" y1="430" x2="848" y2="430" class="ln-bridge" marker-end="url(#b-bridge)"/>
+  <text x="390" y="421" class="t-lbl t-bridge">POST /token  grant_type=token-exchange</text>
+  <text x="390" y="452" class="t-mono">subject_token = user token · audience = mcp-server</text>
+  <text x="390" y="470" class="t-mono">client_assertion_type = urn:ietf:params:oauth:client-assertion-type:jwt-spiffe</text>
+  <text x="390" y="488" class="t-mono">client_assertion = JWT-SVID   (no client secret exists anywhere)</text>
+
+  <!-- 3b key discovery -->
+  <polyline points="850,505 1330,505 1330,470" class="ln-keys" marker-end="url(#b-keys)"/>
+  <rect x="1250" y="420" width="300" height="50" class="box-soft"/>
+  <text x="1266" y="441" class="t-lbl">SPIFFE bundle endpoint (https_web)</text>
+  <text x="1266" y="460" class="t-small">JWKS with use: jwt-svid · configured out of band</text>
+  <text x="870" y="497" class="t-small">fetch trust-domain keys, validate the assertion</text>
+
+  <!-- keycloak internal -->
+  <rect x="760" y="525" width="180" height="70" class="step"/>
+  <text x="772" y="546" class="t-small">executors, in order:</text>
+  <text x="772" y="564" class="t-lbl">scope ∩ agent allowed scopes</text>
+  <text x="772" y="582" class="t-lbl">act mapper stamps the SVID ID</text>
+
+  <line x1="850" y1="620" x2="372" y2="620" class="ln-bridge" marker-end="url(#b-bridge)"/>
+  <text x="390" y="642" class="t-mono-ink">access token  sub=alice  act.sub=spiffe://…/agent-client  aud=mcp-server  scope=user ∩ agent</text>
+
+  <!-- 4 call -->
+  <circle cx="24" cy="690" r="11" class="num"/><text x="24" y="694" text-anchor="middle" class="t-num">4</text>
+  <line x1="370" y1="690" x2="1088" y2="690" class="ln-workload" marker-end="url(#b-workload)"/>
+  <text x="390" y="681" class="t-lbl t-workload">MCP tools/call over mTLS, both sides X509-SVIDs, validated against the SPIFFE bundle only</text>
+  <text x="390" y="712" class="t-mono">Authorization: Bearer &lt;exchanged token&gt;   never the JWT-SVID</text>
+
+  <!-- gate stack -->
+  <rect x="1250" y="560" width="300" height="230" class="box"/>
+  <text x="1266" y="586" class="t-head">Gate stack, fail-closed</text>
+  <text x="1266" y="612" class="t-lbl">1  peer SPIFFE ID on the allow-list</text>
+  <text x="1266" y="636" class="t-lbl">2  signature via realm JWKS</text>
+  <text x="1266" y="660" class="t-lbl">3  aud == this server (no passthrough)</text>
+  <text x="1266" y="684" class="t-lbl">4  act.sub == mTLS peer SPIFFE ID</text>
+  <text x="1266" y="708" class="t-lbl">5  scope covers the tool</text>
+  <line x1="1266" y1="724" x2="1534" y2="724" class="tb"/>
+  <text x="1266" y="746" class="t-mono">log: sub=alice act.sub=…/agent-client</text>
+  <text x="1266" y="766" class="t-mono">tool=whoami</text>
+  <line x1="1090" y1="690" x2="1248" y2="690" class="ln-keys" marker-end="url(#b-keys)"/>
+
+  <line x1="1090" y1="810" x2="372" y2="810" class="ln-ink" marker-end="url(#b-ink)" style="stroke:var(--ink);fill:none;stroke-width:1.5"/>
+  <text x="390" y="832" class="t-lbl">tool result → the model composes the answer → console shows each real step as it happened</text>
+
+  <!-- forbidden -->
+  <rect x="1250" y="200" width="300" height="180" class="box-deny"/>
+  <text x="1266" y="226" class="t-head t-deny">Forbidden, even if it compiles</text>
+  <text x="1266" y="254" class="t-lbl">JWT-SVID used as the MCP bearer token</text>
+  <text x="1266" y="278" class="t-lbl">user authority derived from a SPIFFE ID</text>
+  <text x="1266" y="302" class="t-lbl">accepting a token whose aud is not this server</text>
+  <text x="1266" y="326" class="t-lbl">permissions wider than user ∩ agent scopes</text>
+  <text x="1266" y="350" class="t-lbl">token-endpoint as the JWT-SVID aud</text>
+  <text x="1266" y="370" class="t-small">draft-ietf-oauth-spiffe-client-auth, normative text</text>
+</svg>
+</div>
+<figcaption><b>What the sheet shows.</b> Steps 1 and 2 establish the two identities independently. Step 3 is the only bridge: the workload authenticates to the authorization server with its JWT-SVID (assertion type <code>jwt-spiffe</code>, no client secret) and receives the human's token re-issued with <code>act</code>. Step 4 shows why the JWT-SVID itself is never a bearer token: the resource server needs consent, scopes and an audience, none of which an SVID carries.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ SHEET 3 : DELEGATION CHAIN ============================ -->
+<section class="sheet" id="s3">
+<figure>
+<div class="frame">
+<svg viewBox="0 0 1600 900" role="img" aria-label="Two-hop delegation for employee onboarding: the user token, the hop-1 token attenuated to onboard:initiate for agent-pki, the hop-2 token attenuated to issue:employee-cert for cert-service with a nested act chain, the delegation table that gates each hop, and the refused off-table paths.">
+  <defs>
+    <marker id="c-bridge" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--bridge)"/></marker>
+    <marker id="c-workload" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--workload)"/></marker>
+    <marker id="c-pki" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--pki)"/></marker>
+    <marker id="c-deny" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--deny)"/></marker>
+  </defs>
+  <text x="40" y="52" class="t-title">3 · Delegation chain: onboarding an employee needs two agents, by design</text>
+  <text x="40" y="76" class="t-sub">Each hop attenuates the token; the delegation table in Keycloak is the law for who may hand what to whom</text>
+
+  <!-- three token cards -->
+  <!-- user token -->
+  <rect x="40" y="120" width="400" height="230" class="box-human"/>
+  <rect x="40" y="120" width="400" height="34" class="head-band"/>
+  <text x="56" y="143" class="t-head t-human">user token · from alice's consent</text>
+  <text x="56" y="182" class="t-mono-ink">sub    = alice</text>
+  <text x="56" y="204" class="t-mono-ink">aud    = agent-client</text>
+  <text x="56" y="226" class="t-mono-ink">scope  = onboard:initiate</text>
+  <text x="56" y="246" class="t-mono-ink">         issue:employee-cert</text>
+  <text x="56" y="268" class="t-mono-ink">act    = (none, depth 0)</text>
+  <text x="56" y="300" class="t-lbl">consent is granted at the point of use:</text>
+  <text x="56" y="320" class="t-lbl">login gives identity only; the chat asks</text>
+  <text x="56" y="340" class="t-lbl">for the task scopes when a task needs them</text>
+
+  <!-- hop 1 -->
+  <line x1="440" y1="235" x2="598" y2="235" class="ln-bridge" marker-end="url(#c-bridge)"/>
+  <text x="519" y="222" text-anchor="middle" class="t-lbl t-bridge">exchange, hop 1</text>
+  <text x="519" y="256" text-anchor="middle" class="t-small">client auth: agent-client's JWT-SVID</text>
+
+  <rect x="600" y="120" width="400" height="230" class="box-bridge"/>
+  <rect x="600" y="120" width="400" height="34" class="head-band"/>
+  <text x="616" y="143" class="t-head t-bridge">hop-1 token · agent-client holds</text>
+  <text x="616" y="182" class="t-mono-ink">sub    = alice</text>
+  <text x="616" y="204" class="t-mono-ink">aud    = agent-pki</text>
+  <text x="616" y="226" class="t-mono-ink">scope  = onboard:initiate</text>
+  <text x="616" y="248" class="t-mono-ink">act    = { sub: …/agent-client }</text>
+  <text x="616" y="270" class="t-mono-ink">del_scope = alice's full consent</text>
+  <text x="616" y="300" class="t-lbl">del_scope is a ceiling for later hops,</text>
+  <text x="616" y="320" class="t-lbl">not a permission: resource servers enforce</text>
+  <text x="616" y="340" class="t-lbl">the scope claim alone</text>
+
+  <!-- hop 2 -->
+  <line x1="1000" y1="235" x2="1158" y2="235" class="ln-bridge" marker-end="url(#c-bridge)"/>
+  <text x="1079" y="222" text-anchor="middle" class="t-lbl t-bridge">exchange, hop 2</text>
+  <text x="1079" y="256" text-anchor="middle" class="t-small">client auth: agent-pki's JWT-SVID</text>
+
+  <rect x="1160" y="120" width="400" height="230" class="box-bridge"/>
+  <rect x="1160" y="120" width="400" height="34" class="head-band"/>
+  <text x="1176" y="143" class="t-head t-bridge">hop-2 token · agent-pki holds</text>
+  <text x="1176" y="182" class="t-mono-ink">sub    = alice</text>
+  <text x="1176" y="204" class="t-mono-ink">aud    = cert-service</text>
+  <text x="1176" y="226" class="t-mono-ink">scope  = issue:employee-cert</text>
+  <text x="1176" y="248" class="t-mono-ink">act    = { sub: …/agent-pki,</text>
+  <text x="1176" y="270" class="t-mono-ink">           act: { sub: …/agent-client } }</text>
+  <text x="1176" y="300" class="t-lbl">the nested act is written by the AS only;</text>
+  <text x="1176" y="320" class="t-lbl">depth is read from it and cannot be</text>
+  <text x="1176" y="340" class="t-lbl">spoofed by any caller</text>
+
+  <!-- workload path under the cards -->
+  <rect x="40" y="400" width="200" height="60" class="box"/><text x="140" y="436" text-anchor="middle" class="t-head">agent-client</text>
+  <rect x="600" y="400" width="200" height="60" class="box"/><text x="700" y="436" text-anchor="middle" class="t-head">agent-pki</text>
+  <rect x="1160" y="400" width="200" height="60" class="box"/><text x="1260" y="436" text-anchor="middle" class="t-head">cert-service</text>
+  <rect x="1400" y="400" width="160" height="60" class="box-pki"/><text x="1480" y="436" text-anchor="middle" class="t-head t-pki">EJBCA</text>
+  <line x1="240" y1="430" x2="598" y2="430" class="ln-workload" marker-end="url(#c-workload)"/>
+  <text x="420" y="421" text-anchor="middle" class="t-lbl t-workload">MCP onboard_employee, SVID mTLS, hop-1 bearer</text>
+  <line x1="800" y1="430" x2="1158" y2="430" class="ln-workload" marker-end="url(#c-workload)"/>
+  <text x="980" y="421" text-anchor="middle" class="t-lbl t-workload">MCP issue_employee_cert, SVID mTLS, hop-2 bearer</text>
+  <line x1="1360" y1="430" x2="1398" y2="430" class="ln-pki" marker-end="url(#c-pki)"/>
+  <text x="140" y="486" text-anchor="middle" class="t-small">peer must be agent-client; act.sub == peer</text>
+  <text x="700" y="486" text-anchor="middle" class="t-small">peer must be agent-client; act.sub == peer</text>
+  <text x="1260" y="486" text-anchor="middle" class="t-small">peer must be agent-pki; act.sub == peer</text>
+  <text x="1480" y="486" text-anchor="middle" class="t-small">RA enrol, one cert</text>
+
+  <!-- refused -->
+  <polyline points="140,460 140,540 1260,540 1260,462" class="ln-deny" marker-end="url(#c-deny)"/>
+  <text x="700" y="532" text-anchor="middle" class="t-lbl t-deny">agent-client → cert-service directly: refused at the AS (not on the table) and at cert-service (wrong aud, wrong peer)</text>
+
+  <!-- delegation table -->
+  <rect x="40" y="590" width="1010" height="250" class="box"/>
+  <rect x="40" y="590" width="1010" height="34" class="head-band"/>
+  <text x="56" y="613" class="t-head">Delegation table · infra/keycloak/delegation-{profiles,policies}.json · applied by every setup script, one owner</text>
+  <text x="56" y="650" class="t-kick">ACTOR (CLIENT)</text>
+  <text x="300" y="650" class="t-kick">MAY DELEGATE TO (AUD)</text>
+  <text x="560" y="650" class="t-kick">MAX SCOPE</text>
+  <text x="780" y="650" class="t-kick">DEPTH PRECONDITION</text>
+  <line x1="56" y1="660" x2="1034" y2="660" class="tb"/>
+  <text x="56" y="688" class="t-mono-ink">agent-client</text><text x="300" y="688" class="t-mono-ink">agent-pki</text><text x="560" y="688" class="t-mono-ink">onboard:initiate</text><text x="780" y="688" class="t-lbl">subject token has no act (0 → 1)</text>
+  <line x1="56" y1="702" x2="1034" y2="702" class="tb"/>
+  <text x="56" y="730" class="t-mono-ink">agent-pki</text><text x="300" y="730" class="t-mono-ink">cert-service</text><text x="560" y="730" class="t-mono-ink">issue:employee-cert</text><text x="780" y="730" class="t-lbl">act chain is exactly [agent-client] (1 → 2)</text>
+  <line x1="56" y1="744" x2="1034" y2="744" class="tb"/>
+  <text x="56" y="772" class="t-lbl">Everything not listed is refused by the client-policy executor: wrong audience, a scope above the cap, a chain at max depth, or a subject token whose act does not match.</text>
+  <text x="56" y="796" class="t-lbl">Effective permission at every hop = user's consent ∩ actor's cap. Neither agent can finish alone; the chain ends at depth 2.</text>
+  <text x="56" y="824" class="t-small">The private key of the employee certificate is generated at cert-service for the CSR and discarded at issuance; nothing key-shaped ever travels back through an agent's context.</text>
+
+  <!-- consent card -->
+  <rect x="1090" y="590" width="470" height="250" class="box-human"/>
+  <rect x="1090" y="590" width="470" height="34" class="head-band"/>
+  <text x="1106" y="613" class="t-head t-human">Consent on demand, in front of the audience</text>
+  <text x="1106" y="650" class="t-lbl">1  alice asks the chat to onboard an employee</text>
+  <text x="1106" y="676" class="t-lbl">2  the model picks onboard_employee; the tool wrapper</text>
+  <text x="1106" y="696" class="t-lbl">    sees the missing scopes and refuses before anything runs</text>
+  <text x="1106" y="722" class="t-lbl">3  the console shows exactly what is missing, alice approves</text>
+  <text x="1106" y="742" class="t-lbl">    in Keycloak (step-up, same PKCE client, SSO skips login)</text>
+  <text x="1106" y="768" class="t-lbl">4  the prompt is re-sent; both hops run; a real certificate</text>
+  <text x="1106" y="788" class="t-lbl">    appears with its custody chain</text>
+  <text x="1106" y="820" class="t-small">the wall is UX; the AS refuses an unconsented exchange regardless</text>
+</svg>
+</div>
+<figcaption><b>What the sheet shows.</b> Delegation is attenuation. Each hop narrows <code>scope</code> and re-targets <code>aud</code>, and the authorization server appends the acting workload to a nested <code>act</code> chain that only it can write. The table is the single place that says which workload may delegate to which, up to which scope, at which depth; the red path shows what happens to a shortcut.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ SHEET 4 : VALIDATION ROOTS ============================ -->
+<section class="sheet" id="s4">
+<figure>
+<div class="frame">
+  <div class="sheet-head"><h2>4 · Four validation roots that must never be confused</h2><span class="no">every TLS or JWT bug in this stack starts with mixing two of these</span></div>
+  <table class="roots" aria-label="The four trust stores: contents, who validates what with each, and what each is explicitly not used for.">
+    <thead><tr><th>ROOT</th><th>CONTENTS</th><th>WHO USES IT, FOR WHAT</th><th>EXPLICITLY NOT</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span style="border-color:var(--workload);background:var(--workload-soft)"></span>SPIFFE trust bundle</td>
+        <td>SPIRE-distributed CA keys for <code>ai-agent.id.eviden.internal</code>, upstream-chained to EJBCA through the name-constrained intermediate. JWKS entries carry <code>use: x509-svid</code> / <code>jwt-svid</code>, <code>spiffe_sequence</code>, <code>spiffe_refresh_hint</code>.</td>
+        <td>mcp-server, agent-pki and cert-service validate client X509-SVIDs in mTLS · agent-client validates the servers' SVIDs · Keycloak validates JWT-SVID client assertions with keys fetched from the bundle endpoint (<code>https_web</code>, URL configured out of band, keyed by trust domain)</td>
+        <td class="not">never the system store; X509-SVIDs must not validate through the system store (draft §5.2.3); the bundle URL is not derivable from any SVID</td>
+      </tr>
+      <tr>
+        <td><span style="border-color:var(--ink-3);background:var(--tint)"></span>System / Web PKI store</td>
+        <td>The JVM and OS default CA set.</td>
+        <td>Clients validating the authorization server's HTTPS certificate (draft §3.2) · Keycloak validating the bundle-endpoint server certificate · agent-client reaching a hosted LLM endpoint (Groq) over public TLS</td>
+        <td class="not">never validates any SVID</td>
+      </tr>
+      <tr>
+        <td><span style="border-color:var(--human);background:var(--human-soft)"></span>Keycloak realm keys (JWKS)</td>
+        <td>The realm's OIDC signing keys, discovered from the realm issuer.</td>
+        <td>mcp-server and cert-service validate user and exchanged access tokens (signature, then <code>aud</code>, then <code>act.sub</code> against the mTLS peer, then <code>scope</code>)</td>
+        <td class="not">not the SPIFFE bundle; not SPIRE's OIDC Discovery Provider, which is a cloud-IAM federation shim and is unused here</td>
+      </tr>
+      <tr>
+        <td><span style="border-color:var(--pki);background:var(--pki-soft)"></span>EJBCA management plane (ManagementCA)</td>
+        <td>RA client keystore <code>pki/ra/ra-cert-service.p12</code> and the ManagementCA anchor; human-issued, gitignored, file contract in <code>infra/pki/README.md</code>.</td>
+        <td>cert-service authenticates to EJBCA's REST API as the registered RA <code>ra-cert-service</code> over mTLS and enrols employee certificates</td>
+        <td class="not">not the SPIFFE plane: explicit PKIX key and trust managers, deliberately not the java-spiffe defaults; never validates any SVID</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="foot">Pairing a JWT-SVID <code>iss</code> with OIDC discovery is not recommended by the draft: <code>iss</code> is not part of the JWT-SVID specification. Key discovery for the SPIFFE side follows the bundle endpoint only.</p>
+</div>
+<figcaption><b>What the sheet shows.</b> Four unrelated roots coexist in one process space. The rule that keeps them apart is that each verifier is bound to exactly one root for exactly one kind of credential; the right-hand column is the list of substitutions that would compile and would be wrong.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ SHEET 5 : PKI CUSTODY ============================ -->
+<section class="sheet" id="s5">
+<figure>
+<div class="frame">
+<svg viewBox="0 0 1600 900" role="img" aria-label="PKI chain of custody: EJBCA root, a name-constrained intermediate permitting only the trust domain's URI subtree, SPIRE server as a subordinate CA issuing X509-SVIDs; and a separate issuance leg where cert-service, as a registered RA on the ManagementCA plane, enrols employee certificates.">
+  <defs>
+    <marker id="d-pki" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--pki)"/></marker>
+    <marker id="d-workload" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--workload)"/></marker>
+    <marker id="d-deny" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--deny)"/></marker>
+  </defs>
+  <text x="40" y="52" class="t-title">5 · PKI chain of custody: one root, two issuance legs</text>
+  <text x="40" y="76" class="t-sub">Workload identities descend from EJBCA through a name-constrained CA; employee certificates are issued by EJBCA through a registered RA</text>
+
+  <!-- left leg: workload identity -->
+  <text x="40" y="128" class="t-kick">LEG A · WORKLOAD IDENTITY (SVIDs)</text>
+  <rect x="40" y="140" width="420" height="80" class="box-pki"/>
+  <text x="56" y="168" class="t-head t-pki">EJBCA Root CA</text>
+  <text x="56" y="192" class="t-lbl">lab root; created by the human-run setup, never by an agent</text>
+  <text x="56" y="210" class="t-small">a new machine is a new lab instance with its own root, by design</text>
+
+  <line x1="250" y1="220" x2="250" y2="258" class="ln-pki" marker-end="url(#d-pki)"/>
+  <rect x="40" y="260" width="420" height="120" class="box-pki"/>
+  <text x="56" y="288" class="t-head t-pki">Name-constrained intermediate CA</text>
+  <text x="56" y="312" class="t-mono-ink">permittedSubtrees:</text>
+  <text x="56" y="332" class="t-mono-ink">  URI: spiffe://ai-agent.id.eviden.internal/</text>
+  <text x="56" y="356" class="t-lbl">any leaf outside that subtree is rejected by the verifier itself</text>
+  <text x="56" y="374" class="t-small">proven with negative tests: OpenSSL and JDK PKIX both refuse an out-of-domain leaf</text>
+
+  <line x1="250" y1="380" x2="250" y2="418" class="ln-pki" marker-end="url(#d-pki)"/>
+  <text x="262" y="404" class="t-small">key + chain on disk, human-placed per the file contract</text>
+  <rect x="40" y="420" width="420" height="110" class="box-workload"/>
+  <text x="56" y="448" class="t-head t-workload">SPIRE server · UpstreamAuthority "disk"</text>
+  <text x="56" y="472" class="t-lbl">signs SVIDs under the constrained intermediate</text>
+  <text x="56" y="492" class="t-lbl">publishes the bundle: bundle endpoint (https_web)</text>
+  <text x="56" y="512" class="t-lbl">SPIRE agent attests workloads by docker label</text>
+
+  <line x1="250" y1="530" x2="250" y2="568" class="ln-workload" marker-end="url(#d-workload)"/>
+  <rect x="40" y="570" width="420" height="150" class="box"/>
+  <text x="56" y="598" class="t-head">Per-workload SVIDs, rotated</text>
+  <text x="56" y="624" class="t-mono-ink">X509-SVID  URI SAN = spiffe://…/agent-client</text>
+  <text x="56" y="644" class="t-mono-ink">JWT-SVID   aud = AS issuer identifier</text>
+  <text x="56" y="672" class="t-lbl">agent-client · agent-pki · mcp-server · cert-service</text>
+  <text x="56" y="692" class="t-lbl">delivered over the Workload API socket, never as files</text>
+  <text x="56" y="710" class="t-small">no private key is ever written by a human or committed</text>
+
+  <!-- negative test callout -->
+  <rect x="40" y="760" width="420" height="80" class="box-deny"/>
+  <text x="56" y="786" class="t-head t-deny">Rejected by construction</text>
+  <text x="56" y="808" class="t-mono">spiffe://other-domain.example/…  under this CA</text>
+  <text x="56" y="828" class="t-lbl">fails path validation before any application code runs</text>
+
+  <!-- divider -->
+  <line x1="520" y1="120" x2="520" y2="840" class="ln-life"/>
+
+  <!-- right leg: employee certs -->
+  <text x="580" y="128" class="t-kick">LEG B · EMPLOYEE CERTIFICATES (THE ONBOARDING RESULT)</text>
+  <rect x="580" y="140" width="440" height="100" class="box-pki"/>
+  <text x="596" y="168" class="t-head t-pki">EJBCA · ManagementCA plane</text>
+  <text x="596" y="192" class="t-lbl">employee end-entity and certificate profiles</text>
+  <text x="596" y="212" class="t-lbl">registered RA  ra-cert-service  (credential: p12, human-issued)</text>
+  <text x="596" y="230" class="t-small">infra/pki/setup-employee-profile.sh, human-run; missing file → stop, never a self-signed stand-in</text>
+
+  <rect x="1100" y="140" width="460" height="100" class="box"/>
+  <text x="1116" y="168" class="t-head">cert-service</text>
+  <text x="1116" y="192" class="t-lbl">accepts only a hop-2 token: aud = cert-service, scope = issue:employee-cert,</text>
+  <text x="1116" y="212" class="t-lbl">peer = agent-pki, act.sub == peer</text>
+  <text x="1116" y="230" class="t-small">explicit PKIX managers for the RA leg; java-spiffe context only for the MCP leg</text>
+
+  <line x1="1100" y1="190" x2="1022" y2="190" class="ln-pki" marker-end="url(#d-pki)"/>
+  <text x="1061" y="180" text-anchor="middle" class="t-small t-pki">RA mTLS</text>
+
+  <!-- issuance steps -->
+  <g transform="translate(580 290)">
+    <rect x="0" y="0" width="980" height="300" class="box"/>
+    <rect x="0" y="0" width="980" height="34" class="head-band"/>
+    <text x="16" y="23" class="t-head">Issuance, one certificate per onboarding</text>
+    <circle cx="30" cy="70" r="11" class="num"/><text x="30" y="74" text-anchor="middle" class="t-num">1</text>
+    <text x="52" y="75" class="t-lbl">cert-service verifies the hop-2 token and the mTLS peer, then derives the subject from the request (e.g. john-laptop)</text>
+    <circle cx="30" cy="110" r="11" class="num"/><text x="30" y="114" text-anchor="middle" class="t-num">2</text>
+    <text x="52" y="115" class="t-lbl">generates an EC key pair for the CSR in memory</text>
+    <circle cx="30" cy="150" r="11" class="num"/><text x="30" y="154" text-anchor="middle" class="t-num">3</text>
+    <text x="52" y="155" class="t-lbl">enrols against EJBCA's REST API as the registered RA, under the employee profiles</text>
+    <circle cx="30" cy="190" r="11" class="num"/><text x="30" y="194" text-anchor="middle" class="t-num">4</text>
+    <text x="52" y="195" class="t-lbl">discards the private key at issuance; returns the certificate PEM (public by construction) with the custody chain</text>
+    <circle cx="30" cy="230" r="11" class="num"/><text x="30" y="234" text-anchor="middle" class="t-num">5</text>
+    <text x="52" y="235" class="t-lbl">logs  sub=alice  act=[agent-pki ← agent-client]; the console shows the issued certificate and the chain that produced it</text>
+    <text x="16" y="278" class="t-small">Real PKI has the device generate its own key and the CA never sees it; the lab's shortcut is why step 4 exists and why no key ever crosses an agent's context.</text>
+  </g>
+
+  <!-- who does what -->
+  <g transform="translate(580 630)">
+    <rect x="0" y="0" width="980" height="210" class="box-soft"/>
+    <text x="16" y="28" class="t-head">Human-run, by contract</text>
+    <text x="16" y="56" class="t-mono-ink">infra/spire/gen-bootstrap.sh</text><text x="420" y="56" class="t-lbl">node-attestation bootstrap CA for the SPIRE agent</text>
+    <text x="16" y="82" class="t-mono-ink">infra/pki/setup-ejbca.sh</text><text x="420" y="82" class="t-lbl">root, name-constrained intermediate, SPIRE upstream files</text>
+    <text x="16" y="108" class="t-mono-ink">infra/pki/setup-employee-profile.sh</text><text x="420" y="108" class="t-lbl">employee profiles and the RA credential for cert-service</text>
+    <line x1="16" y1="126" x2="964" y2="126" class="tb"/>
+    <text x="16" y="154" class="t-lbl">Everything else is scripted and idempotent: demo/up.sh runs preflight, reset, registrations, realm, delegation table, checks.</text>
+    <text x="16" y="178" class="t-lbl">Nothing under infra/pki/ or the docker volumes leaves a machine; a demo laptop becomes its own lab with its own root.</text>
+  </g>
+</svg>
+</div>
+<figcaption><b>What the sheet shows.</b> Leg A is how a workload gets an identity: a real CA hierarchy, with the name constraint doing enforcement in the verifier rather than in policy. Leg B is what the delegation chain produces: an employee certificate from the same PKI, issued through a registered RA, with the key discarded where it was made.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ SHEET 6 : DEPLOYMENT ============================ -->
+<section class="sheet" id="s6">
+<figure>
+<div class="frame">
+<svg viewBox="0 0 1600 900" role="img" aria-label="Deployment on one machine with docker compose: the lab network, the services per compose profile, the four host ports, the volumes that hold CA state, and the environment switch that selects the LLM provider.">
+  <defs>
+    <marker id="e-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink-3)"/></marker>
+    <marker id="e-human" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--human)"/></marker>
+    <marker id="e-workload" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--workload)"/></marker>
+  </defs>
+  <text x="40" y="52" class="t-title">6 · Deployment: one laptop, one compose project, four host ports</text>
+  <text x="40" y="76" class="t-sub">What the audience's browser touches, what stays on the lab network, and the one environment switch for the model</text>
+
+  <!-- host -->
+  <rect x="40" y="110" width="1520" height="730" class="box-soft"/>
+  <text x="56" y="136" class="t-kick">HOST · Docker Desktop · nothing else installed (Java and the console build inside the images)</text>
+
+  <!-- browser -->
+  <rect x="70" y="170" width="220" height="90" class="box-human"/>
+  <text x="86" y="198" class="t-head t-human">Browser</text>
+  <text x="86" y="222" class="t-lbl">http://localhost:8090</text>
+  <text x="86" y="242" class="t-lbl">hosts: 127.0.0.1 keycloak</text>
+
+  <!-- lab network -->
+  <rect x="330" y="160" width="1200" height="560" class="box"/>
+  <text x="346" y="186" class="t-kick">DOCKER NETWORK "lab" · bridge · egress allowed</text>
+
+  <!-- core profile -->
+  <rect x="350" y="210" width="360" height="230" class="box-soft"/>
+  <text x="366" y="234" class="t-kick">CORE (always)</text>
+  <rect x="366" y="248" width="328" height="44" class="box"/><text x="380" y="276" class="t-lbl">keycloak · host 8080</text>
+  <rect x="366" y="300" width="328" height="44" class="box-workload"/><text x="380" y="328" class="t-lbl">spire-server · spire-agent · in-net only</text>
+  <rect x="366" y="352" width="328" height="44" class="box"/><text x="380" y="380" class="t-lbl">mcp-server · host 8443 (TLS, SVID mTLS)</text>
+  <text x="366" y="424" class="t-small">volumes: spire-server-data, spire-agent-socket</text>
+
+  <!-- demo profile -->
+  <rect x="730" y="210" width="380" height="230" class="box-soft"/>
+  <text x="746" y="234" class="t-kick">PROFILE demo</text>
+  <rect x="746" y="248" width="348" height="44" class="box"/><text x="760" y="276" class="t-lbl">agent-web · host 8090 · console + agent-client</text>
+  <rect x="746" y="300" width="348" height="44" class="box"/><text x="760" y="328" class="t-lbl">agent-pki · in-net only</text>
+  <rect x="746" y="352" width="348" height="44" class="box"/><text x="760" y="380" class="t-lbl">cert-service · in-net only</text>
+  <text x="746" y="424" class="t-small">Keycloak realm is volume-less: recreated by the idempotent setup on every launch</text>
+
+  <!-- pki profile -->
+  <rect x="1130" y="210" width="380" height="110" class="box-soft"/>
+  <text x="1146" y="234" class="t-kick">PROFILE pki</text>
+  <rect x="1146" y="248" width="348" height="44" class="box-pki"/><text x="1160" y="276" class="t-lbl">ejbca · host 8444 admin (client-cert gated)</text>
+  <text x="1146" y="308" class="t-small">volume: CA state · never deleted without asking</text>
+
+  <!-- llm-local profile -->
+  <rect x="1130" y="330" width="380" height="110" class="box-soft"/>
+  <text x="1146" y="354" class="t-kick">PROFILE llm-local · only when LLM_PROVIDER=ollama</text>
+  <rect x="1146" y="368" width="348" height="44" class="box"/><text x="1160" y="396" class="t-lbl">ollama · qwen3.5:4b · in-net only, no credential</text>
+  <text x="1146" y="428" class="t-small">volume: 2–3 GB model, pulled once by pull-model.sh</text>
+
+  <!-- LLM switch -->
+  <rect x="350" y="470" width="760" height="230" class="box"/>
+  <rect x="350" y="470" width="760" height="34" class="head-band"/>
+  <text x="366" y="493" class="t-head">The model is a deployment detail: selected by environment, never by code</text>
+  <text x="366" y="528" class="t-mono-ink">infra/.env  (gitignored)</text>
+  <text x="366" y="552" class="t-mono-ink">  LLM_PROVIDER=openai            # ollama (default) | openai-wire</text>
+  <text x="366" y="574" class="t-mono-ink">  LLM_API_KEY=…                  # the only credential-shaped value, and it lives here</text>
+  <text x="366" y="596" class="t-mono-ink">  LLM_BASE_URL=https://api.groq.com/openai/v1   LLM_MODEL=openai/gpt-oss-120b</text>
+  <line x1="366" y1="612" x2="1094" y2="612" class="tb"/>
+  <text x="366" y="638" class="t-lbl">Spring AI's own selector spring.ai.model.chat picks the ChatModel; zero provider types exist in Java.</text>
+  <text x="366" y="660" class="t-lbl">Default configuration holds zero LLM credentials, asserted by the checks. Hosted TLS uses the system store, not the SPIFFE bundle.</text>
+  <text x="366" y="686" class="t-lbl">Either way the model only chooses which tool to call; SVID → exchange → mTLS decides on whose behalf.</text>
+
+  <!-- egress -->
+  <rect x="1130" y="470" width="380" height="110" class="box-soft"/>
+  <text x="1146" y="494" class="t-kick">EGRESS · hosted provider only</text>
+  <text x="1146" y="522" class="t-lbl">agent-web → api.groq.com over public TLS</text>
+  <text x="1146" y="544" class="t-lbl">validated by the JVM system trust store</text>
+  <text x="1146" y="566" class="t-small">no other service leaves the lab network</text>
+  <line x1="1110" y1="585" x2="1128" y2="585" class="ln-soft" marker-end="url(#e-ink)"/>
+
+  <!-- launch -->
+  <rect x="1130" y="600" width="380" height="100" class="box-soft"/>
+  <text x="1146" y="624" class="t-kick">LAUNCH · same command every time</text>
+  <text x="1146" y="652" class="t-mono-ink">bash demo/up.sh</text>
+  <text x="1146" y="674" class="t-small">preflight (ports, artifacts, provider) → reset --full →</text>
+  <text x="1146" y="690" class="t-small">registrations, realm, table → checklist --full (clock skew first)</text>
+
+  <!-- browser arrows -->
+  <line x1="290" y1="200" x2="364" y2="270" class="ln-human" marker-end="url(#e-human)" style="stroke:var(--human);fill:none;stroke-width:2"/>
+  <text x="70" y="290" class="t-small">login redirect → :8080 · console → :8090</text>
+
+  <!-- verification strip -->
+  <rect x="70" y="480" width="240" height="220" class="box"/>
+  <text x="86" y="506" class="t-head">Before trusting it</text>
+  <text x="86" y="532" class="t-lbl">clock skew host ↔ keycloak</text>
+  <text x="86" y="554" class="t-lbl">every service healthy</text>
+  <text x="86" y="576" class="t-lbl">model present or catalogued</text>
+  <text x="86" y="598" class="t-lbl">ports answering</text>
+  <text x="86" y="620" class="t-lbl">acceptance: happy path +</text>
+  <text x="86" y="640" class="t-lbl">every rejection enforced</text>
+  <text x="86" y="668" class="t-mono">demo/checklist.sh --full</text>
+  <text x="86" y="688" class="t-mono">scripts/check-*.sh</text>
+
+  <!-- footer -->
+  <text x="56" y="760" class="t-kick">RECOVERY</text>
+  <text x="56" y="784" class="t-lbl">reset.sh --soft: restart the app layer (under 2 min) · --full: compose down + up, volumes kept (~3 min) · --cold: destroys CA state, asks first, human re-runs the PKI setup</text>
+  <text x="56" y="812" class="t-lbl">Machine-local by design and never copied between machines: SPIRE bootstrap CA, EJBCA hierarchy, RA keystore, docker volumes, the model, infra/.env</text>
+</svg>
+</div>
+<figcaption><b>What the sheet shows.</b> The whole stack is one compose project; the browser only ever reaches the console and Keycloak, every other service is addressed by SPIFFE ID inside the lab network. The model provider is the one thing that varies between a laptop with a GPU and one without, and it varies in an environment file, not in code.</figcaption>
+</figure>
+</section>
+
+<script>
+  (function () {
+    var m = /[?&]sheet=(\d)/.exec(location.search);
+    if (!m) return;
+    document.body.classList.add('export');
+    var keep = 's' + m[1];
+    document.querySelectorAll('section.sheet').forEach(function (s) { s.hidden = s.id !== keep; });
+  })();
+</script>

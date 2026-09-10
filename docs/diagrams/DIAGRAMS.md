@@ -4,6 +4,13 @@ Rendered views of what this lab builds. Source of truth stays in [ARCHITECTURE.m
 
 An editable canvas version lives in [architecture.excalidraw](architecture.excalidraw).
 
+**Presentation sheets (2026-09-10, branch `demo-track`)** — six 16:9 drawings rendered from
+[agent-identity-architecture.html](agent-identity-architecture.html) (open it in a browser; `?sheet=N` shows one sheet full-frame):
+`sheet-1.png` topology and trust planes · `sheet-2.png` the single hop · `sheet-3.png` the delegation chain ·
+`sheet-4.png` the four validation roots · `sheet-5.png` PKI chain of custody · `sheet-6.png` deployment.
+Re-render after a change: `chrome --headless=new --window-size=1600,900 --force-device-scale-factor=2 --screenshot=sheet-N.png "file:///…/agent-identity-architecture.html?sheet=N"`.
+The mermaid views below predate the demo track (M3 era) and are kept for the milestone history.
+
 **Status legend** (as of branch `m3-ejbca`): green/solid = built · gray/dashed = planned.
 
 | Milestone | Status |
