@@ -19,12 +19,14 @@ async function renderLogin(live: LiveState) {
 }
 
 describe('LoginPage', () => {
-  it('anonymous: offers both consent variants and the guest path', async () => {
+  it('anonymous: offers exactly one sign-in, identity only (no audit variant, no guest path)', async () => {
     const fixture = await renderLogin('anonymous');
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('a[href="/oauth2/authorization/keycloak"]')).toBeTruthy();
-    expect(el.querySelector('a[href="/oauth2/authorization/keycloak-audit"]')).toBeTruthy();
-    expect(el.querySelector('.browse')?.textContent).toContain('recorded evidence');
+    expect(el.querySelector('a[href="/oauth2/authorization/keycloak-audit"]')).toBeFalsy();
+    expect(el.querySelector('.browse')).toBeFalsy();
+    expect(el.querySelectorAll('.step').length).toBe(3);
+    expect(el.textContent).toContain('identity only');
   });
 
   it('offline: explains live mode is unavailable, offers the recorded evidence', async () => {
@@ -35,11 +37,11 @@ describe('LoginPage', () => {
     expect(el.querySelector('.btn.alt')).toBeTruthy();
   });
 
-  it('guest path: sets guest mode and navigates to the console', async () => {
-    const fixture = await renderLogin('anonymous');
+  it('guest path (offline only): sets guest mode and navigates to the console', async () => {
+    const fixture = await renderLogin('offline');
     const session = TestBed.inject(SessionService);
     const router = TestBed.inject(Router);
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.browse')?.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.btn.alt')?.click();
     await fixture.whenStable();
     expect(session.guest()).toBe(true);
     expect(router.url).toBe('/');

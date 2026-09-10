@@ -68,13 +68,18 @@ bash demo/import-images.sh /e/spiffe-lab     # wherever the stick is mounted in 
 
 ## 4. The LLM key
 
-```bash
-printf 'LLM_PROVIDER=openai\nLLM_API_KEY=gsk_...\n' > infra/.env
+PowerShell, from the repo root:
+
+```powershell
+Copy-Item infra\.env.example infra\.env
+notepad infra\.env          # paste the gsk_ key from console.groq.com/keys, save as UTF-8
 ```
 
-Or copy the `infra/.env` you brought. If you use Notepad instead: **Save As →
-Encoding: UTF-8** (not "UTF-8 with BOM"), and never create the file with a
-PowerShell `>` (that writes UTF-16). The preflight checks the encoding.
+Or copy the `infra/.env` you brought on the stick. The key is never in git: the
+template `infra/.env.example` is committed, the filled-in `infra/.env` is
+gitignored. If Notepad asks, choose **UTF-8** (not "UTF-8 with BOM"); never create
+the file with a PowerShell `>` (that writes UTF-16). The preflight checks the
+encoding and prints the provider it actually read.
 
 No `.env` means the local Ollama model: a 2–3 GB pull and slow CPU answers.
 
